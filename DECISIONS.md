@@ -96,3 +96,21 @@ The grammar guarantees the shape. The output is then checked with the user's Zod
 ## D18: Structured-output acceptance (M4)
 
 `test/e2e/structured.e2e.test.ts` runs 50 classification and 50 nested-extraction calls against the default model (`INBOARD_E2E=1`). All 100 parse and validate. Run time was about 65 s on this machine.
+
+## D19: AI SDK provider behaviour (M5)
+
+- Unsupported input (images, files, tool calls and results, tool definitions, reasoning in history) is dropped with an `unsupported` warning. It is never a crash.
+- `toolChoice` of `required` or `tool` throws `INVALID_OPTIONS`, because a tool call cannot be honoured in v1. `auto` and `none` are accepted.
+- `responseFormat: json` with a schema uses the grammar path (`inboard.object`), so the output is guaranteed to match. Without a schema, the provider asks for JSON in the prompt and warns that the output is not guaranteed.
+- With a JSON schema, `doStream` emits the whole object as one `text-delta`. It is not streamed token by token, because the grammar path has no streaming variant in v1.
+- Abort in `doStream` maps to `finish` with `unified: "other"`, `raw: "abort"`.
+- Stream parts follow `LanguageModelV4StreamPart`: `stream-start`, `text-start`, `text-delta`*, `text-end`, `finish`. Errors arrive as an `error` part. A unit test checks the order.
+- `inboard(modelId, settings)` shares one provider per settings value. Functions in settings (such as `onEvent`) are left out of that key, so two calls with different callbacks but otherwise equal settings share an instance.
+
+## D20: AI SDK v7 deprecations in the example (M5)
+
+`examples/ai-sdk` uses `generateObject`, as the plan specifies. `ai@7` marks `generateObject` deprecated (in favour of `generateText` with an output setting) and marks the `image` content part deprecated. The example still runs. Moving to the newer API is a follow-up.
+
+## D21: pnpm workspace (M5)
+
+`pnpm-workspace.yaml` includes the root package and `examples/*`, so examples run with `pnpm --filter <example> start`, as the plan requires. Examples import the built `dist/`, so run `pnpm build` first.
