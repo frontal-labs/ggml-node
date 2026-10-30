@@ -2,16 +2,6 @@
   "name": "inboard-sdk",
   "version": "0.1.0",
   "description": "An LLM inside your Node process. No daemon, no API key, no port.",
-  "license": "MIT",
-  "author": "Frontal Labs",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/frontal-labs/inboard.git"
-  },
-  "homepage": "https://github.com/frontal-labs/inboard#readme",
-  "bugs": {
-    "url": "https://github.com/frontal-labs/inboard/issues"
-  },
   "keywords": [
     "llm",
     "local",
@@ -21,24 +11,18 @@
     "structured-output",
     "offline"
   ],
+  "homepage": "https://github.com/frontal-labs/inboard#readme",
+  "bugs": {
+    "url": "https://github.com/frontal-labs/inboard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frontal-labs/inboard.git"
+  },
+  "license": "MIT",
+  "author": "Frontal Labs",
+  "sideEffects": false,
   "type": "module",
-  "engines": {
-    "node": ">=20"
-  },
-  "packageManager": "bun@1.3.14",
-  "workspaces": [
-    "examples/*"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
-  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -56,32 +40,28 @@
   "bin": {
     "inboard": "./dist/cli/index.js"
   },
-  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "workspaces": [
+    "examples/*"
+  ],
   "scripts": {
     "build": "tsup",
+    "changeset": "changeset",
     "dev": "tsx src/cli/index.ts",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
     "format": "biome check --write .",
+    "lint": "biome check .",
+    "registry:generate": "tsx scripts/compute-checksums.ts",
+    "release": "bun run verify && changeset publish",
     "test": "vitest run tests/unit",
     "test:e2e": "INBOARD_E2E=1 vitest run tests/e2e",
-    "registry:generate": "tsx scripts/compute-checksums.ts",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "bun run verify && changeset publish",
-    "verify": "bun run lint && bun run typecheck && bun run test && bun run build"
-  },
-  "peerDependencies": {
-    "ai": "^7.0.0",
-    "zod": "^4.0.0"
-  },
-  "peerDependenciesMeta": {
-    "ai": {
-      "optional": true
-    },
-    "zod": {
-      "optional": true
-    }
+    "typecheck": "tsc --noEmit",
+    "verify": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "version-packages": "changeset version"
   },
   "dependencies": {
     "@ai-sdk/provider": "^4.0.34",
@@ -98,6 +78,23 @@
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
+    "ultracite": "8.1.0",
     "vitest": "^5.0.5"
+  },
+  "peerDependencies": {
+    "ai": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    }
+  },
+  "packageManager": "bun@1.3.14",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

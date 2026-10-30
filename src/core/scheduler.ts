@@ -1,10 +1,10 @@
 import { InboardError } from "@/core/errors.js";
 
 export interface SchedulerOptions {
-  /** Number of backend sequences, which is also the maximum number of running requests. */
-  sequences: number;
   /** Requests allowed to wait beyond the running ones. Overflow throws `QUEUE_FULL`. */
   maxQueue: number;
+  /** Number of backend sequences, which is also the maximum number of running requests. */
+  sequences: number;
 }
 
 export interface Lease {
@@ -12,13 +12,13 @@ export interface Lease {
   index: number;
   /** Milliseconds spent waiting for a free sequence. */
   queueMs: number;
-  release(): void;
+  release: () => void;
 }
 
 interface Waiter {
-  resolve(lease: Lease): void;
+  cleanup: () => void;
   enqueuedAt: number;
-  cleanup(): void;
+  resolve: (lease: Lease) => void;
 }
 
 /**
@@ -54,10 +54,14 @@ export class Scheduler {
     signal: AbortSignal | undefined,
     onQueued?: (queueLength: number) => void,
   ): Promise<Lease> {
-    if (signal?.aborted) return Promise.reject(abortedError());
+    if (signal?.aborted) {
+      return Promise.reject(abortedError());
+    }
 
     const index = this.free.shift();
-    if (index !== undefined) return Promise.resolve(this.makeLease(index, 0));
+    if (index !== undefined) {
+      return Promise.resolve(this.makeLease(index, 0));
+    }
 
     if (this.queue.length >= this.maxQueue) {
       return Promise.reject(
@@ -70,13 +74,15 @@ export class Scheduler {
     return new Promise<Lease>((resolve, reject) => {
       const onAbort = () => {
         const i = this.queue.indexOf(waiter);
-        if (i !== -1) this.queue.splice(i, 1);
+        if (i !== -1) {
+          this.queue.splice(i, 1);
+        }
         reject(abortedError());
       };
       const waiter: Waiter = {
-        resolve,
-        enqueuedAt: performance.now(),
         cleanup: () => signal?.removeEventListener("abort", onAbort),
+        enqueuedAt: performance.now(),
+        resolve,
       };
       signal?.addEventListener("abort", onAbort, { once: true });
       this.queue.push(waiter);
@@ -87,6 +93,8 @@ export class Scheduler {
   /** Waits until every running request has released its sequence and nothing is queued. */
   async drain(): Promise<void> {
     while (this.running > 0 || this.queue.length > 0) {
+      // Polling is intentional here: drain runs only at unload, and it needs no event wiring.
+      // biome-ignore lint/performance/noAwaitInLoops: polling loop by design
       await new Promise((resolve) => setTimeout(resolve, 5));
     }
   }
@@ -97,7 +105,9 @@ export class Scheduler {
       index,
       queueMs,
       release: () => {
-        if (released) return;
+        if (released) {
+          return;
+        }
         released = true;
         this.handOff(index);
       },
@@ -117,7 +127,7 @@ export class Scheduler {
 
 export function abortedError(cause?: unknown): InboardError {
   return new InboardError("ABORTED", "The request was aborted", {
-    hint: "The signal fired. Call again if you still need the result.",
     cause,
+    hint: "The signal fired. Call again if you still need the result.",
   });
 }

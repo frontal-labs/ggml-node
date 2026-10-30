@@ -1,11 +1,12 @@
+// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { InboardError } from "@/core/errors.js";
 import type { KvShape } from "@/core/memory.js";
 
 export interface ModelMeta {
+  shape: KvShape;
   sizeBytes: number;
   trainContextSize: number;
-  shape: KvShape;
 }
 
 /**
@@ -21,8 +22,8 @@ export async function readModelMeta(path: string): Promise<ModelMeta> {
     info = await readGgufFileInfo(path, { readTensorInfo: false });
   } catch (err) {
     throw new InboardError("INVALID_OPTIONS", `${path} is not a readable GGUF file`, {
-      hint: "Check the path. Custom models must be GGUF files.",
       cause: err,
+      hint: "Check the path. Custom models must be GGUF files.",
     });
   }
 
@@ -43,9 +44,9 @@ export async function readModelMeta(path: string): Promise<ModelMeta> {
     typeof attention.value_length === "number" ? attention.value_length : embedding / headCount;
 
   return {
+    shape: { blockCount, headCountKv, keyLength, valueLength },
     sizeBytes,
     trainContextSize,
-    shape: { blockCount, headCountKv, keyLength, valueLength },
   };
 }
 

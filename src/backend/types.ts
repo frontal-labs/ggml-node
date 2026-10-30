@@ -1,21 +1,15 @@
-import type {
-  FinishReason,
-  GenerateOptions,
-  JsonSchemaObject,
-  Message,
-  Usage,
-} from "@/core/types.js";
+import type { FinishReason, JsonSchemaObject, Message, Usage } from "@/core/types.js";
 
 /**
  * The inference backend. The core scheduler and public API only talk to this interface, so a
  * browser or edge backend can be added later without touching `core/`.
  */
 export interface BackendLoadOptions {
-  path: string;
   contextSize: number;
+  gpu: "auto" | false;
+  path: string;
   sequences: number;
   threads?: number | undefined;
-  gpu: "auto" | false;
 }
 
 /**
@@ -30,60 +24,58 @@ export interface JsonGrammar {
 export type ParsedOutput = { ok: true; value: unknown } | { ok: false; message: string };
 
 export interface BackendRequest {
-  messages: Message[];
-  maxTokens: number;
-  temperature: number;
-  topP?: number | undefined;
-  topK?: number | undefined;
-  seed?: number | undefined;
-  stop?: string[] | undefined;
-  signal?: AbortSignal | undefined;
   /** When set, generation can only produce text that matches this grammar. */
   grammar?: JsonGrammar | undefined;
+  maxTokens: number;
+  messages: Message[];
+  seed?: number | undefined;
+  signal?: AbortSignal | undefined;
+  stop?: string[] | undefined;
+  temperature: number;
+  topK?: number | undefined;
+  topP?: number | undefined;
 }
 
 export interface BackendResult {
-  text: string;
-  /** Set when the request used a grammar. The backend decodes and validates the text itself. */
-  parsed?: ParsedOutput | undefined;
   finishReason: FinishReason;
-  usage: Usage;
   /** Time from the start of generation to the first generated token, in ms. */
   firstTokenMs: number;
+  /** Set when the request used a grammar. The backend decodes and validates the text itself. */
+  parsed?: ParsedOutput | undefined;
+  text: string;
+  usage: Usage;
 }
 
 /** What the backend knows about a loaded model. The core adds the registry id and license. */
 export interface BackendLoadResult {
+  contextSize: number;
+  gpu: string | false;
   path: string;
   sizeBytes: number;
-  contextSize: number;
   /** Context length the model was trained with, from GGUF metadata. */
   trainContextSize: number;
-  gpu: string | false;
 }
 
 export interface Backend {
-  load(options: BackendLoadOptions): Promise<BackendLoadResult>;
   /** Builds (or reuses) a grammar for a JSON Schema. Schemas must already pass the supported-subset check. */
-  buildJsonGrammar(schema: JsonSchemaObject): Promise<JsonGrammar>;
-  /** Token count for a plain string, without any chat template. */
-  countTokens(text: string): Promise<number>;
+  buildJsonGrammar: (schema: JsonSchemaObject) => Promise<JsonGrammar>;
   /** Exact prompt token count for a message list, including the model's chat template. */
-  countPromptTokens(messages: Message[]): Promise<number>;
+  countPromptTokens: (messages: Message[]) => Promise<number>;
+  /** Token count for a plain string, without any chat template. */
+  countTokens: (text: string) => Promise<number>;
   /**
    * Generates on the given sequence index. `onDelta` receives text as it is produced.
    * Resolves with `finishReason: "abort"` when the signal fires during generation.
    */
-  generate(
+  generate: (
     sequence: number,
     request: BackendRequest,
     onDelta: (text: string) => void,
-  ): Promise<BackendResult>;
+  ) => Promise<BackendResult>;
+  load: (options: BackendLoadOptions) => Promise<BackendLoadResult>;
   /** Resets a sequence so the next request starts from an empty context. */
-  resetSequence(sequence: number): Promise<void>;
-  unload(): Promise<void>;
+  resetSequence: (sequence: number) => Promise<void>;
+  unload: () => Promise<void>;
 }
 
 export type BackendFactory = () => Backend;
-
-export type { GenerateOptions };

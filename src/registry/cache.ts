@@ -7,8 +7,8 @@ export interface ResolveCacheDirOptions {
   /** Explicit option. Wins over the environment. */
   cacheDir?: string | undefined;
   env?: InboardEnv;
-  platform?: NodeJS.Platform;
   home?: string;
+  platform?: NodeJS.Platform;
 }
 
 /**
@@ -24,8 +24,12 @@ export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
   const platform = options.platform ?? process.platform;
   const home = options.home ?? homedir();
 
-  if (options.cacheDir) return options.cacheDir;
-  if (env.INBOARD_CACHE_DIR) return env.INBOARD_CACHE_DIR;
+  if (options.cacheDir) {
+    return options.cacheDir;
+  }
+  if (env.INBOARD_CACHE_DIR) {
+    return env.INBOARD_CACHE_DIR;
+  }
 
   if (platform === "darwin") {
     return join(home, "Library", "Caches", "inboard");
@@ -44,9 +48,13 @@ export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
  * boolean throws `INVALID_OPTIONS`, so a typo cannot silently leave the network on.
  */
 export function resolveOffline(option: boolean | undefined, env: InboardEnv = defaultEnv): boolean {
-  if (option === true) return true;
+  if (option === true) {
+    return true;
+  }
   const raw = env.INBOARD_OFFLINE;
-  if (raw === undefined) return false;
+  if (raw === undefined) {
+    return false;
+  }
   const parsed = flagSchema.safeParse(raw);
   if (!parsed.success) {
     throw new InboardError("INVALID_OPTIONS", `INBOARD_OFFLINE must be a boolean, got "${raw}"`, {

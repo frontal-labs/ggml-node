@@ -20,7 +20,7 @@ describe("AI SDK integration (fake backend)", () => {
   });
 
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
   });
 
   function modelWith(respond: (messages: { role: string; content: string }[]) => string) {
@@ -29,17 +29,17 @@ describe("AI SDK integration (fake backend)", () => {
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        readMeta: async () => ({
-          sizeBytes: 100,
-          trainContextSize: 4096,
-          shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
-        }),
+        env: { INBOARD_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
-          cgroupLimitBytes: async () => undefined,
           cgroupCurrentBytes: async () => undefined,
+          cgroupLimitBytes: async () => undefined,
         },
-        env: { INBOARD_CACHE_DIR: dir },
+        readMeta: async () => ({
+          shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
+          sizeBytes: 100,
+          trainContextSize: 4096,
+        }),
       },
     );
     return languageModelFor("qwen2.5-0.5b", inboard);
@@ -57,7 +57,9 @@ describe("AI SDK integration (fake backend)", () => {
     const model = modelWith(() => "one two three");
     const result = streamText({ model, prompt: "count" });
     let streamed = "";
-    for await (const delta of result.textStream) streamed += delta;
+    for await (const delta of result.textStream) {
+      streamed += delta;
+    }
     expect(streamed).toBe("one two three");
     expect(await result.text).toBe("one two three");
   });
@@ -65,7 +67,7 @@ describe("AI SDK integration (fake backend)", () => {
   it("generateObject returns a value that matches the Zod schema", async () => {
     const schema = z.object({ label: z.enum(["spam", "ham"]), score: z.number() });
     const model = modelWith(() => '{"label":"spam","score":0.8}');
-    const r = await generateObject({ model, schema, prompt: "classify" });
+    const r = await generateObject({ model, prompt: "classify", schema });
     expect(r.object).toEqual({ label: "spam", score: 0.8 });
   });
 });

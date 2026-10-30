@@ -8,17 +8,17 @@ import { createInboard } from "@/index.js";
 const enabled = env.INBOARD_E2E === "1";
 
 describe.skipIf(!enabled)("e2e: default model", () => {
-  const ai = createInboard({ model: "qwen2.5-0.5b", maxConcurrency: 1 });
+  const ai = createInboard({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
 
   it("loads and generates text with usage and timing", async () => {
     const r = await ai.generate({
-      messages: [
-        { role: "system", content: "Answer in one short sentence." },
-        { role: "user", content: "What is the capital of France?" },
-      ],
       maxTokens: 48,
-      temperature: 0,
+      messages: [
+        { content: "Answer in one short sentence.", role: "system" },
+        { content: "What is the capital of France?", role: "user" },
+      ],
       seed: 1,
+      temperature: 0,
     });
     expect(r.text.trim().length).toBeGreaterThan(0);
     expect(r.model).toBe("qwen2.5-0.5b");
@@ -29,9 +29,11 @@ describe.skipIf(!enabled)("e2e: default model", () => {
   }, 120_000);
 
   it("streams deltas whose join equals the final text", async () => {
-    const s = ai.stream({ prompt: "Name three colours.", maxTokens: 32, temperature: 0, seed: 2 });
+    const s = ai.stream({ maxTokens: 32, prompt: "Name three colours.", seed: 2, temperature: 0 });
     const pieces: string[] = [];
-    for await (const piece of s.textStream) pieces.push(piece);
+    for await (const piece of s.textStream) {
+      pieces.push(piece);
+    }
     const r = await s.result;
     expect(pieces.join("")).toBe(r.text);
     expect(pieces.length).toBeGreaterThan(1);
@@ -47,8 +49,8 @@ describe.skipIf(!enabled)("e2e: default model", () => {
     }, 10);
     try {
       await ai.generate({
-        prompt: "Write a short paragraph about rivers.",
         maxTokens: 128,
+        prompt: "Write a short paragraph about rivers.",
         temperature: 0.7,
       });
     } finally {
@@ -61,15 +63,16 @@ describe.skipIf(!enabled)("e2e: default model", () => {
 
   it("aborts a running generation and resolves the stream with finishReason abort", async () => {
     const s = ai.stream({
-      prompt: "Tell a long story about a lighthouse.",
       maxTokens: 256,
+      prompt: "Tell a long story about a lighthouse.",
       temperature: 0.7,
     });
     let count = 0;
     for await (const _ of s.textStream) {
-      void _;
       count += 1;
-      if (count === 3) s.abort();
+      if (count === 3) {
+        s.abort();
+      }
     }
     const r = await s.result;
     expect(r.finishReason).toBe("abort");
@@ -78,7 +81,7 @@ describe.skipIf(!enabled)("e2e: default model", () => {
   it("unloads, then reloads on the next call", async () => {
     await ai.unload();
     expect(ai.info()).toBeNull();
-    const r = await ai.generate({ prompt: "Say hi.", maxTokens: 8, temperature: 0 });
+    const r = await ai.generate({ maxTokens: 8, prompt: "Say hi.", temperature: 0 });
     expect(r.text.length).toBeGreaterThan(0);
     await ai.unload();
   }, 120_000);

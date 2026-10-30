@@ -1,7 +1,8 @@
 import type { InboardError } from "@/core/errors.js";
-import type { ModelId } from "@/registry/models.js";
 
-export type { ModelId };
+import type { ModelId as RegistryModelId } from "@/registry/models.js";
+
+export type ModelId = RegistryModelId;
 
 export type Message =
   | { role: "system"; content: string }
@@ -9,22 +10,22 @@ export type Message =
   | { role: "assistant"; content: string };
 
 export interface GenerateOptions {
-  /** Exactly one of `prompt` or `messages` must be set. */
-  prompt?: string;
-  messages?: Message[];
-  system?: string;
   /** Default 256. */
   maxTokens?: number;
-  /** Default 0.7. */
-  temperature?: number;
-  topP?: number;
-  topK?: number;
-  /** Deterministic sampling when set. */
-  seed?: number;
-  stop?: string[];
+  messages?: Message[];
   /** Default "error". */
   overflow?: "error" | "truncate-start" | "truncate-middle";
+  /** Exactly one of `prompt` or `messages` must be set. */
+  prompt?: string;
+  /** Deterministic sampling when set. */
+  seed?: number;
   signal?: AbortSignal;
+  stop?: string[];
+  system?: string;
+  /** Default 0.7. */
+  temperature?: number;
+  topK?: number;
+  topP?: number;
 }
 
 export type FinishReason = "stop" | "length" | "abort";
@@ -36,27 +37,27 @@ export interface Usage {
 }
 
 export interface Timing {
-  queueMs: number;
-  loadMs: number;
   firstTokenMs: number;
-  totalMs: number;
+  loadMs: number;
+  queueMs: number;
   tokensPerSecond: number;
+  totalMs: number;
 }
 
 export interface GenerateResult {
-  text: string;
   finishReason: FinishReason;
   model: ModelId | "custom";
-  usage: Usage;
+  text: string;
   timing: Timing;
+  usage: Usage;
 }
 
 export interface StreamResult {
-  /** Text deltas. */
-  textStream: AsyncIterable<string>;
+  abort: () => void;
   /** Resolves at end, same shape as `generate()`. */
   result: Promise<GenerateResult>;
-  abort(): void;
+  /** Text deltas. */
+  textStream: AsyncIterable<string>;
 }
 
 /**
@@ -81,13 +82,13 @@ export interface ObjectResult<T> extends Omit<GenerateResult, "text"> {
 }
 
 export interface ModelInfo {
+  backend: "llama-cpp";
+  contextSize: number;
+  gpu: string | false;
   id: ModelId | "custom";
+  license: string;
   path: string;
   sizeBytes: number;
-  contextSize: number;
-  license: string;
-  backend: "llama-cpp";
-  gpu: string | false;
 }
 
 export type InboardEvent =
@@ -104,42 +105,45 @@ export type InboardEvent =
 export type ModelSource = ModelId | { path: string };
 
 export interface InboardOptions {
-  /** A registry model id, or `{ path }` for a custom GGUF file. */
-  model: ModelSource;
+  /** Required for models whose license is not Apache-2.0 or MIT. Default false. */
+  acceptLicense?: boolean;
+  /** Download lazily when the model is missing and not offline. Default true. */
+  autoDownload?: boolean;
+  /** Default: env INBOARD_CACHE_DIR, else the OS cache dir + /inboard. */
+  cacheDir?: string;
   /** Default: min(model.contextLength, 4096). */
   contextSize?: number;
-  /** Parallel sequences. Default 1. */
-  maxConcurrency?: number;
-  /** Pending requests beyond concurrency. Overflow throws QUEUE_FULL. Default 64. */
-  maxQueue?: number;
-  /** Number of threads, or "auto". */
-  threads?: number | "auto";
   /** "auto" uses Metal/CUDA/Vulkan when available. */
   gpu?: "auto" | false;
   /** Default "none". */
   isolation?: "none" | "process";
-  /** Default: env INBOARD_CACHE_DIR, else the OS cache dir + /inboard. */
-  cacheDir?: string;
+  /** Parallel sequences. Default 1. */
+  maxConcurrency?: number;
+  /** Pending requests beyond concurrency. Overflow throws QUEUE_FULL. Default 64. */
+  maxQueue?: number;
+  /** A registry model id, or `{ path }` for a custom GGUF file. */
+  model: ModelSource;
   /** Or env INBOARD_OFFLINE=1. Default false. */
   offline?: boolean;
-  /** Download lazily when the model is missing and not offline. Default true. */
-  autoDownload?: boolean;
-  /** Required for models whose license is not Apache-2.0 or MIT. Default false. */
-  acceptLicense?: boolean;
   onEvent?: (event: InboardEvent) => void;
+  /** Number of threads, or "auto". */
+  threads?: number | "auto";
 }
 
 export interface Inboard {
+  countTokens: (text: string) => Promise<number>;
+  generate: (options: GenerateOptions) => Promise<GenerateResult>;
+  info: () => ModelInfo | null;
+  /** Overloads: a Zod schema infers its output type. A JSON Schema object returns `unknown` unless `T` is given. */
+  object: {
+    <S extends ZodLikeSchema>(
+      options: ObjectOptions<S>,
+    ): Promise<ObjectResult<S["_zod"]["output"]>>;
+    <T = unknown>(options: ObjectOptions<JsonSchemaObject>): Promise<ObjectResult<T>>;
+  };
   /** Optional warm-up. Idempotent. Resolves with model info. */
-  ready(): Promise<ModelInfo>;
-  generate(options: GenerateOptions): Promise<GenerateResult>;
-  stream(options: GenerateOptions): StreamResult;
-  object<S extends ZodLikeSchema>(
-    options: ObjectOptions<S>,
-  ): Promise<ObjectResult<S["_zod"]["output"]>>;
-  object<T = unknown>(options: ObjectOptions<JsonSchemaObject>): Promise<ObjectResult<T>>;
-  countTokens(text: string): Promise<number>;
-  info(): ModelInfo | null;
+  ready: () => Promise<ModelInfo>;
+  stream: (options: GenerateOptions) => StreamResult;
   /** Frees memory. The next call reloads the model. */
-  unload(): Promise<void>;
+  unload: () => Promise<void>;
 }

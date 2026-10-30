@@ -15,26 +15,26 @@ describe("resolveCacheDir", () => {
 
   it("uses INBOARD_CACHE_DIR before the OS default", () => {
     expect(
-      resolveCacheDir({ env: { INBOARD_CACHE_DIR: "/env" }, platform: "darwin", home: "/h" }),
+      resolveCacheDir({ env: { INBOARD_CACHE_DIR: "/env" }, home: "/h", platform: "darwin" }),
     ).toBe("/env");
   });
 
   it("uses the macOS cache directory", () => {
-    expect(resolveCacheDir({ env: {}, platform: "darwin", home: "/Users/x" })).toBe(
+    expect(resolveCacheDir({ env: {}, home: "/Users/x", platform: "darwin" })).toBe(
       "/Users/x/Library/Caches/inboard",
     );
   });
 
   it("uses XDG_CACHE_HOME on Linux, then ~/.cache", () => {
     expect(
-      resolveCacheDir({ env: { XDG_CACHE_HOME: "/xdg" }, platform: "linux", home: "/h" }),
+      resolveCacheDir({ env: { XDG_CACHE_HOME: "/xdg" }, home: "/h", platform: "linux" }),
     ).toBe("/xdg/inboard");
-    expect(resolveCacheDir({ env: {}, platform: "linux", home: "/h" })).toBe("/h/.cache/inboard");
+    expect(resolveCacheDir({ env: {}, home: "/h", platform: "linux" })).toBe("/h/.cache/inboard");
   });
 
   it("uses LOCALAPPDATA on Windows", () => {
     expect(
-      resolveCacheDir({ env: { LOCALAPPDATA: "C:\\L" }, platform: "win32", home: "C:\\h" }),
+      resolveCacheDir({ env: { LOCALAPPDATA: "C:\\L" }, home: "C:\\h", platform: "win32" }),
     ).toBe(join("C:\\L", "inboard", "cache"));
   });
 });

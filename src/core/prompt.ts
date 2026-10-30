@@ -5,14 +5,14 @@ import type { GenerateOptions, Message } from "@/core/types.js";
 export type OverflowPolicy = NonNullable<GenerateOptions["overflow"]>;
 
 export interface NormalizedRequest {
-  messages: Message[];
   maxTokens: number;
-  temperature: number;
-  topP: number | undefined;
-  topK: number | undefined;
+  messages: Message[];
+  overflow: OverflowPolicy;
   seed: number | undefined;
   stop: string[] | undefined;
-  overflow: OverflowPolicy;
+  temperature: number;
+  topK: number | undefined;
+  topP: number | undefined;
 }
 
 export const DEFAULT_MAX_TOKENS = 256;
@@ -43,7 +43,7 @@ export function normalizeRequest(options: GenerateOptions): NormalizedRequest {
   }
 
   const conversation: Message[] = hasPrompt
-    ? [{ role: "user", content: o.prompt as string }]
+    ? [{ content: o.prompt as string, role: "user" }]
     : [...(o.messages ?? [])];
 
   if (conversation.length === 0) {
@@ -57,18 +57,18 @@ export function normalizeRequest(options: GenerateOptions): NormalizedRequest {
         "Pass the system text once.",
       );
     }
-    conversation.unshift({ role: "system", content: o.system });
+    conversation.unshift({ content: o.system, role: "system" });
   }
 
   return {
-    messages: conversation,
     maxTokens: o.maxTokens ?? DEFAULT_MAX_TOKENS,
-    temperature: o.temperature ?? DEFAULT_TEMPERATURE,
-    topP: o.topP,
-    topK: o.topK,
+    messages: conversation,
+    overflow: o.overflow ?? "error",
     seed: o.seed,
     stop: o.stop,
-    overflow: o.overflow ?? "error",
+    temperature: o.temperature ?? DEFAULT_TEMPERATURE,
+    topK: o.topK,
+    topP: o.topP,
   };
 }
 
@@ -89,7 +89,9 @@ export async function fitToBudget(
 ): Promise<Message[]> {
   let current = [...messages];
   let tokens = await countTokens(current);
-  if (tokens <= budget) return current;
+  if (tokens <= budget) {
+    return current;
+  }
 
   if (policy === "error") {
     throw overflow(tokens, budget);
@@ -97,8 +99,12 @@ export async function fitToBudget(
 
   while (tokens > budget) {
     const index = nextRemovable(current, policy);
-    if (index === undefined) throw overflow(tokens, budget);
+    if (index === undefined) {
+      throw overflow(tokens, budget);
+    }
     current = current.filter((_, i) => i !== index);
+    // Each removal changes the prompt, so the count has to be recomputed in order.
+    // biome-ignore lint/performance/noAwaitInLoops: sequential by design
     tokens = await countTokens(current);
   }
   return current;
@@ -109,23 +115,33 @@ function nextRemovable(messages: Message[], policy: OverflowPolicy): number | un
   const lastUser = findLastIndex(messages, (m) => m.role === "user");
   const candidates: number[] = [];
   messages.forEach((m, i) => {
-    if (m.role === "system" || i === lastUser) return;
+    if (m.role === "system" || i === lastUser) {
+      return;
+    }
     candidates.push(i);
   });
-  if (candidates.length === 0) return undefined;
+  if (candidates.length === 0) {
+    return undefined;
+  }
 
-  if (policy === "truncate-start") return candidates[0];
+  if (policy === "truncate-start") {
+    return candidates[0];
+  }
 
   // truncate-middle: keep the first removable message and drop the one closest to the middle.
   const interior = candidates.slice(1);
-  if (interior.length === 0) return undefined;
+  if (interior.length === 0) {
+    return undefined;
+  }
   return interior[Math.floor(interior.length / 2)];
 }
 
 function findLastIndex<T>(items: readonly T[], predicate: (item: T) => boolean): number {
-  for (let i = items.length - 1; i >= 0; i--) {
+  for (let i = items.length - 1; i >= 0; i -= 1) {
     const item = items[i];
-    if (item !== undefined && predicate(item)) return i;
+    if (item !== undefined && predicate(item)) {
+      return i;
+    }
   }
   return -1;
 }

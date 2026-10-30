@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
@@ -44,17 +45,17 @@ const DEFAULT_CONTEXT_CAP = 4096;
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
 export interface InboardDeps {
   createBackend: () => Backend;
-  readMeta: (path: string) => Promise<ModelMeta>;
-  memory: MemoryReaders;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
   env: InboardEnv;
+  memory: MemoryReaders;
+  readMeta: (path: string) => Promise<ModelMeta>;
 }
 
 export const defaultDeps: InboardDeps = {
   createBackend: createLlamaCppBackend,
-  readMeta: readModelMeta,
-  memory: nodeMemoryReaders,
   env: defaultEnv,
+  memory: nodeMemoryReaders,
+  readMeta: readModelMeta,
 };
 
 interface Loaded {
@@ -64,19 +65,19 @@ interface Loaded {
 }
 
 interface RunSpec {
-  req: NormalizedRequest;
-  requestId: string;
-  signal?: AbortSignal | undefined;
-  onDelta?: ((text: string) => void) | undefined;
   /** When set, generation is constrained to this schema and the output is parsed against it. */
   jsonSchema?: JsonSchemaObject | undefined;
+  onDelta?: ((text: string) => void) | undefined;
+  req: NormalizedRequest;
+  requestId: string;
   schemaName?: string | undefined;
+  signal?: AbortSignal | undefined;
 }
 
 interface RunOutcome {
-  result: GenerateResult;
   /** Structured output as checked by the backend. Set only when the request used a grammar. */
   parsed: ParsedOutput | undefined;
+  result: GenerateResult;
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
@@ -104,7 +105,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
   const gpu = options.gpu ?? "auto";
   const autoDownload = options.autoDownload ?? true;
   const acceptLicense = options.acceptLicense ?? false;
-  const onEvent = options.onEvent;
+  const { onEvent } = options;
 
   let loaded: Loaded | undefined;
   let loading: Promise<Loaded> | undefined;
@@ -114,7 +115,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
   async function loadModel(): Promise<Loaded> {
     const backend = deps.createBackend();
     const modelLabel: ModelId | "custom" = id;
-    emitEvent(onEvent, { type: "load:start", model: modelLabel });
+    emitEvent(onEvent, { model: modelLabel, type: "load:start" });
     const started = performance.now();
 
     let path: string;
@@ -122,13 +123,13 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     let contextCap: number;
     if (typeof options.model === "string") {
       const entry = MODELS[options.model];
-      license = entry.license;
+      ({ license } = entry);
       contextCap = entry.contextLength;
       path = await ensureModel(options.model, {
-        cacheDir,
-        allowDownload: !offline && autoDownload,
-        offline,
         acceptLicense,
+        allowDownload: !offline && autoDownload,
+        cacheDir,
+        offline,
         onEvent: (e) => emitEvent(onEvent, e),
       });
     } else {
@@ -149,32 +150,32 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     }
 
     await preflight({
-      estimateBytes: estimateModelBytes(meta.sizeBytes, meta.shape, contextSize, maxConcurrency),
       contextSize,
-      sequences: maxConcurrency,
+      estimateBytes: estimateModelBytes(meta.sizeBytes, meta.shape, contextSize, maxConcurrency),
       readers: deps.memory,
+      sequences: maxConcurrency,
     });
 
     try {
       const backendInfo = await backend.load({
-        path,
         contextSize,
+        path,
         sequences: maxConcurrency,
-        ...(threads !== undefined ? { threads } : {}),
+        ...(threads === undefined ? {} : { threads }),
         gpu,
       });
       const info: ModelInfo = {
+        backend: "llama-cpp",
+        contextSize: backendInfo.contextSize,
+        gpu: backendInfo.gpu,
         id: modelLabel,
+        license,
         path,
         sizeBytes: backendInfo.sizeBytes,
-        contextSize: backendInfo.contextSize,
-        license,
-        backend: "llama-cpp",
-        gpu: backendInfo.gpu,
       };
       const ms = performance.now() - started;
-      emitEvent(onEvent, { type: "load:done", model: modelLabel, ms });
-      return { backend, info, scheduler: new Scheduler({ sequences: maxConcurrency, maxQueue }) };
+      emitEvent(onEvent, { model: modelLabel, ms, type: "load:done" });
+      return { backend, info, scheduler: new Scheduler({ maxQueue, sequences: maxConcurrency }) };
     } catch (err) {
       await backend.unload().catch(() => undefined);
       throw toInboardError(err);
@@ -183,14 +184,18 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
 
   /** Loads the model once. Concurrent callers share the same load. Returns `loadMs: 0` when already loaded. */
   async function ensureLoaded(): Promise<{ state: Loaded; loadMs: number }> {
-    if (unloading) await unloading;
-    if (loaded) return { state: loaded, loadMs: 0 };
+    if (unloading) {
+      await unloading;
+    }
+    if (loaded) {
+      return { loadMs: 0, state: loaded };
+    }
     const started = performance.now();
     loading ??= loadModel().then(
-      (state) => {
-        loaded = state;
+      (loadedState) => {
+        loaded = loadedState;
         loading = undefined;
-        return state;
+        return loadedState;
       },
       (err: unknown) => {
         loading = undefined;
@@ -198,9 +203,10 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
       },
     );
     const state = await loading;
-    return { state, loadMs: performance.now() - started };
+    return { loadMs: performance.now() - started, state };
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one request lifecycle (validate, queue, generate, account), kept in one place on purpose
   async function runRequest(spec: RunSpec): Promise<RunOutcome> {
     const { req, requestId, signal, onDelta, jsonSchema, schemaName } = spec;
     const started = performance.now();
@@ -217,29 +223,29 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
 
     const grammar = jsonSchema ? await backend.buildJsonGrammar(jsonSchema) : undefined;
     const withInstruction =
-      jsonSchema !== undefined
-        ? withSchemaInstruction(req.messages, jsonSchema, schemaName)
-        : req.messages;
+      jsonSchema === undefined
+        ? req.messages
+        : withSchemaInstruction(req.messages, jsonSchema, schemaName);
     const messages = await fitToBudget(withInstruction, budget, req.overflow, (m) =>
       backend.countPromptTokens(m),
     );
 
     const lease = await scheduler.acquire(signal, (queueLength) =>
-      emitEvent(onEvent, { type: "request:queued", id: requestId, queueLength }),
+      emitEvent(onEvent, { id: requestId, queueLength, type: "request:queued" }),
     );
 
-    emitEvent(onEvent, { type: "request:start", id: requestId });
+    emitEvent(onEvent, { id: requestId, type: "request:start" });
     let outcome: BackendResult;
     try {
       await backend.resetSequence(lease.index);
       const request: BackendRequest = {
-        messages,
         maxTokens: req.maxTokens,
+        messages,
         temperature: req.temperature,
-        ...(req.topP !== undefined ? { topP: req.topP } : {}),
-        ...(req.topK !== undefined ? { topK: req.topK } : {}),
-        ...(req.seed !== undefined ? { seed: req.seed } : {}),
-        ...(req.stop !== undefined ? { stop: req.stop } : {}),
+        ...(req.topP === undefined ? {} : { topP: req.topP }),
+        ...(req.topK === undefined ? {} : { topK: req.topK }),
+        ...(req.seed === undefined ? {} : { seed: req.seed }),
+        ...(req.stop === undefined ? {} : { stop: req.stop }),
         ...(signal ? { signal } : {}),
         ...(grammar ? { grammar } : {}),
       };
@@ -253,19 +259,19 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     const totalMs = performance.now() - started;
     const genMs = Math.max(totalMs - lease.queueMs, 1);
     const result: GenerateResult = {
-      text: outcome.text,
       finishReason: outcome.finishReason,
       model: info.id,
-      usage: outcome.usage,
+      text: outcome.text,
       timing: {
-        queueMs: lease.queueMs,
-        loadMs,
         firstTokenMs: outcome.firstTokenMs,
-        totalMs: totalMs + loadMs,
+        loadMs,
+        queueMs: lease.queueMs,
         tokensPerSecond: outcome.usage.outputTokens / (genMs / 1000),
+        totalMs: totalMs + loadMs,
       },
+      usage: outcome.usage,
     };
-    return { result, parsed: outcome.parsed };
+    return { parsed: outcome.parsed, result };
   }
 
   async function generate(opts: GenerateOptions): Promise<GenerateResult> {
@@ -273,11 +279,13 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     try {
       const req = normalizeRequest(opts);
       const { result } = await runRequest({ req, requestId, signal: opts.signal });
-      if (result.finishReason === "abort") throw abortedError();
-      emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
+      if (result.finishReason === "abort") {
+        throw abortedError();
+      }
+      emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       return result;
     } catch (err) {
-      emitEvent(onEvent, { type: "request:error", id: requestId, error: toInboardError(err) });
+      emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -292,20 +300,22 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
 
       const req = normalizeRequest(genOpts);
       const { result, parsed } = await runRequest({
+        jsonSchema,
         req,
         requestId,
         signal: genOpts.signal,
-        jsonSchema,
-        ...(schemaName !== undefined ? { schemaName } : {}),
+        ...(schemaName === undefined ? {} : { schemaName }),
       });
-      if (result.finishReason === "abort") throw abortedError();
+      if (result.finishReason === "abort") {
+        throw abortedError();
+      }
 
       const value = checkStructured(parsed, zodSchema);
-      emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
+      emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
     } catch (err) {
-      emitEvent(onEvent, { type: "request:error", id: requestId, error: toInboardError(err) });
+      emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -314,23 +324,31 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     const requestId = nextId();
     const controller = new AbortController();
     const forward = () => controller.abort();
-    if (opts.signal?.aborted) controller.abort();
-    else opts.signal?.addEventListener("abort", forward, { once: true });
+    if (opts.signal?.aborted) {
+      controller.abort();
+    } else {
+      opts.signal?.addEventListener("abort", forward, { once: true });
+    }
 
     const chunks = new AsyncChannel<string>();
     const result = (async () =>
       runRequest({
+        onDelta: (text) => chunks.push(text),
         req: normalizeRequest(opts),
         requestId,
         signal: controller.signal,
-        onDelta: (text) => chunks.push(text),
       }))().then(
-      ({ result }) => {
+      (outcome) => {
+        const { result: finished } = outcome;
         chunks.close();
-        if (result.finishReason !== "abort") {
-          emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
+        if (finished.finishReason !== "abort") {
+          emitEvent(onEvent, {
+            id: requestId,
+            result: withoutText(finished),
+            type: "request:done",
+          });
         }
-        return result;
+        return finished;
       },
       (err: unknown) => {
         if (isInboardError(err) && err.code === "ABORTED" && controller.signal.aborted) {
@@ -339,7 +357,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
           return emptyAbortResult();
         }
         chunks.fail(err);
-        emitEvent(onEvent, { type: "request:error", id: requestId, error: toInboardError(err) });
+        emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
         throw err;
       },
     );
@@ -348,19 +366,19 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     result.catch(() => undefined);
 
     return {
-      textStream: chunks,
-      result,
       abort: () => controller.abort(),
+      result,
+      textStream: chunks,
     };
   }
 
   function emptyAbortResult(): GenerateResult {
     return {
-      text: "",
       finishReason: "abort",
       model: loaded?.info.id ?? id,
+      text: "",
+      timing: { firstTokenMs: 0, loadMs: 0, queueMs: 0, tokensPerSecond: 0, totalMs: 0 },
       usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-      timing: { queueMs: 0, loadMs: 0, firstTokenMs: 0, totalMs: 0, tokensPerSecond: 0 },
     };
   }
 
@@ -370,24 +388,28 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
   }
 
   return {
-    async ready(): Promise<ModelInfo> {
-      const { state } = await ensureLoaded();
-      return state.info;
-    },
-    generate,
-    stream,
-    object: object as Inboard["object"],
     async countTokens(text: string): Promise<number> {
       const { state } = await ensureLoaded();
       return state.backend.countTokens(text);
     },
+    generate,
     info(): ModelInfo | null {
       return loaded?.info ?? null;
     },
+    object: object as Inboard["object"],
+    async ready(): Promise<ModelInfo> {
+      const { state } = await ensureLoaded();
+      return state.info;
+    },
+    stream,
     async unload(): Promise<void> {
-      if (loading) await loading.catch(() => undefined);
+      if (loading) {
+        await loading.catch(() => undefined);
+      }
       const current = loaded;
-      if (!current) return;
+      if (!current) {
+        return;
+      }
       loaded = undefined;
       unloading = (async () => {
         await current.scheduler.drain();
@@ -404,7 +426,9 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
 
 function validateOptions(options: InboardOptions): void {
   const parsed = inboardOptionsSchema.safeParse(options);
-  if (parsed.success) return;
+  if (parsed.success) {
+    return;
+  }
   const issue = firstIssue(parsed.error);
   throw new InboardError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
     hint: "Check createInboard options against docs/api.md.",
@@ -416,8 +440,8 @@ async function assertExists(path: string): Promise<void> {
     await stat(path);
   } catch (err) {
     throw new InboardError("MODEL_NOT_FOUND", `No file at ${path}`, {
-      hint: "Check the path. Custom models must be GGUF files on disk.",
       cause: err,
+      hint: "Check the path. Custom models must be GGUF files on disk.",
     });
   }
 }
@@ -427,18 +451,26 @@ function checkStructured(
   parsed: ParsedOutput | undefined,
   zodSchema: ZodLikeSchema | undefined,
 ): unknown {
-  if (!parsed) throw schemaViolation("the backend returned no structured output");
-  if (!parsed.ok) throw schemaViolation(parsed.message);
-  const value = parsed.value;
-  if (!zodSchema) return value;
+  if (!parsed) {
+    throw schemaViolation("the backend returned no structured output");
+  }
+  if (!parsed.ok) {
+    throw schemaViolation(parsed.message);
+  }
+  const { value } = parsed;
+  if (!zodSchema) {
+    return value;
+  }
 
   const parser = zodSchema as unknown as {
-    safeParse(
+    safeParse: (
       input: unknown,
-    ): { success: true; data: unknown } | { success: false; error: { message: string } };
+    ) => { success: true; data: unknown } | { success: false; error: { message: string } };
   };
   const checked = parser.safeParse(value);
-  if (!checked.success) throw schemaViolation(checked.error.message);
+  if (!checked.success) {
+    throw schemaViolation(checked.error.message);
+  }
   return checked.data;
 }
 
@@ -462,13 +494,15 @@ function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {
 }
 
 function toInboardError(err: unknown): InboardError {
-  if (isInboardError(err)) return err;
+  if (isInboardError(err)) {
+    return err;
+  }
   return new InboardError(
     "BACKEND_CRASHED",
     err instanceof Error ? err.message : "Unknown backend error",
     {
-      hint: "Run: npx inboard doctor. If this persists, report it with the stack trace.",
       cause: err,
+      hint: "Run: npx inboard doctor. If this persists, report it with the stack trace.",
     },
   );
 }

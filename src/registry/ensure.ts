@@ -10,25 +10,25 @@ const PERMISSIVE_LICENSES: ReadonlySet<string> = new Set(["Apache-2.0", "MIT"]);
 
 /** The fields the downloader and license gate need from a registry entry. */
 export interface DownloadableModel {
-  id: ModelId;
   file: string;
-  url: string;
-  sha256: string;
-  sizeBytes: number;
+  id: ModelId;
   license: string;
   licenseUrl: string;
+  sha256: string;
+  sizeBytes: number;
+  url: string;
 }
 
 export interface EnsureModelOptions {
-  cacheDir: string;
+  acceptLicense: boolean;
   /** False in offline mode, or when `autoDownload` is false. */
   allowDownload: boolean;
+  cacheDir: string;
+  fetch?: typeof fetch | undefined;
   /** Whether offline mode is what blocked the download. Only changes the hint. */
   offline: boolean;
-  acceptLicense: boolean;
-  signal?: AbortSignal | undefined;
-  fetch?: typeof fetch | undefined;
   onEvent?: ((event: InboardEvent) => void) | undefined;
+  signal?: AbortSignal | undefined;
 }
 
 export function modelFilePath(model: Pick<DownloadableModel, "file">, cacheDir: string): string {
@@ -57,7 +57,7 @@ export async function ensureEntry(
   model: DownloadableModel,
   options: EnsureModelOptions,
 ): Promise<string> {
-  if (!PERMISSIVE_LICENSES.has(model.license) && !options.acceptLicense) {
+  if (!(PERMISSIVE_LICENSES.has(model.license) || options.acceptLicense)) {
     throw new InboardError(
       "LICENSE_NOT_ACCEPTED",
       `Model ${model.id} is licensed under ${model.license}`,
@@ -68,7 +68,9 @@ export async function ensureEntry(
   }
 
   const path = modelFilePath(model, options.cacheDir);
-  if (await isModelPresent(model, options.cacheDir)) return path;
+  if (await isModelPresent(model, options.cacheDir)) {
+    return path;
+  }
 
   if (!options.allowDownload) {
     throw new InboardError("MODEL_NOT_FOUND", `Model ${model.id} is not in the cache`, {
@@ -78,18 +80,18 @@ export async function ensureEntry(
     });
   }
 
-  options.onEvent?.({ type: "download:start", model: model.id, totalBytes: model.sizeBytes });
+  options.onEvent?.({ model: model.id, totalBytes: model.sizeBytes, type: "download:start" });
   await downloadFile({
-    url: model.url,
-    sha256: model.sha256,
-    sizeBytes: model.sizeBytes,
     destPath: path,
-    signal: options.signal,
     fetch: options.fetch,
     onProgress: (receivedBytes, totalBytes) => {
-      options.onEvent?.({ type: "download:progress", model: model.id, receivedBytes, totalBytes });
+      options.onEvent?.({ model: model.id, receivedBytes, totalBytes, type: "download:progress" });
     },
+    sha256: model.sha256,
+    signal: options.signal,
+    sizeBytes: model.sizeBytes,
+    url: model.url,
   });
-  options.onEvent?.({ type: "download:done", model: model.id, path });
+  options.onEvent?.({ model: model.id, path, type: "download:done" });
   return path;
 }

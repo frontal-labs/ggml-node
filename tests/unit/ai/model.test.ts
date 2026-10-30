@@ -30,20 +30,20 @@ function callOptions(
 describe("mapPrompt", () => {
   it("maps system and text parts to messages", () => {
     const { messages, warnings } = mapPrompt([
-      { role: "system", content: "be brief" },
+      { content: "be brief", role: "system" },
       {
-        role: "user",
         content: [
-          { type: "text", text: "hi" },
-          { type: "text", text: "there" },
+          { text: "hi", type: "text" },
+          { text: "there", type: "text" },
         ],
+        role: "user",
       },
-      { role: "assistant", content: [{ type: "text", text: "hello" }] },
+      { content: [{ text: "hello", type: "text" }], role: "assistant" },
     ]);
     expect(messages).toEqual([
-      { role: "system", content: "be brief" },
-      { role: "user", content: "hi\nthere" },
-      { role: "assistant", content: "hello" },
+      { content: "be brief", role: "system" },
+      { content: "hi\nthere", role: "user" },
+      { content: "hello", role: "assistant" },
     ]);
     expect(warnings).toEqual([]);
   });
@@ -51,38 +51,38 @@ describe("mapPrompt", () => {
   it("warns and drops image and file parts instead of failing", () => {
     const { messages, warnings } = mapPrompt([
       {
-        role: "user",
         content: [
-          { type: "text", text: "what is this?" },
+          { text: "what is this?", type: "text" },
           {
-            type: "file",
+            data: { data: new Uint8Array([1]), type: "data" },
             mediaType: "image/png",
-            data: { type: "data", data: new Uint8Array([1]) },
+            type: "file",
           },
         ],
+        role: "user",
       },
     ]);
-    expect(messages).toEqual([{ role: "user", content: "what is this?" }]);
+    expect(messages).toEqual([{ content: "what is this?", role: "user" }]);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatchObject({ type: "unsupported", feature: "file or image input" });
+    expect(warnings[0]).toMatchObject({ feature: "file or image input", type: "unsupported" });
   });
 
   it("warns for tool results and drops the tool role", () => {
     const { messages, warnings } = mapPrompt([
-      { role: "user", content: [{ type: "text", text: "go" }] },
+      { content: [{ text: "go", type: "text" }], role: "user" },
       {
-        role: "tool",
         content: [
           {
-            type: "tool-result",
+            output: { type: "text", value: "x" },
             toolCallId: "1",
             toolName: "t",
-            output: { type: "text", value: "x" },
+            type: "tool-result",
           },
         ],
+        role: "tool",
       },
     ] as unknown as LanguageModelV4Prompt);
-    expect(messages).toEqual([{ role: "user", content: "go" }]);
+    expect(messages).toEqual([{ content: "go", role: "user" }]);
     expect(warnings.some((w) => featureOf(w) === "tool results")).toBe(true);
   });
 });
@@ -98,7 +98,7 @@ describe("InboardLanguageModel", () => {
   });
 
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
   });
 
   function model() {
@@ -106,13 +106,13 @@ describe("InboardLanguageModel", () => {
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        readMeta: async () => ({ sizeBytes: 100, trainContextSize: 4096, shape: SHAPE }),
+        env: { INBOARD_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
-          cgroupLimitBytes: async () => undefined,
           cgroupCurrentBytes: async () => undefined,
+          cgroupLimitBytes: async () => undefined,
         },
-        env: { INBOARD_CACHE_DIR: dir },
+        readMeta: async () => ({ shape: SHAPE, sizeBytes: 100, trainContextSize: 4096 }),
       },
     );
     return languageModelFor("qwen2.5-0.5b", inboard);
@@ -127,12 +127,12 @@ describe("InboardLanguageModel", () => {
 
   it("doGenerate returns text content, finish reason, usage and warnings", async () => {
     const r = await model().doGenerate(
-      callOptions([{ role: "user", content: [{ type: "text", text: "hello world" }] }], {
+      callOptions([{ content: [{ text: "hello world", type: "text" }], role: "user" }], {
         maxOutputTokens: 64,
         temperature: 0,
       }),
     );
-    expect(r.content).toEqual([{ type: "text", text: "reply to hello world" }]);
+    expect(r.content).toEqual([{ text: "reply to hello world", type: "text" }]);
     expect(r.finishReason.unified).toBe("stop");
     expect(r.usage.outputTokens.total).toBe(4);
     expect(r.usage.inputTokens.total).toBeGreaterThan(0);
@@ -142,7 +142,7 @@ describe("InboardLanguageModel", () => {
   it("doGenerate maps finish reason length", async () => {
     backend = createFakeBackend({ respond: () => "a b c d e f g h" });
     const r = await model().doGenerate(
-      callOptions([{ role: "user", content: [{ type: "text", text: "x" }] }], {
+      callOptions([{ content: [{ text: "x", type: "text" }], role: "user" }], {
         maxOutputTokens: 3,
       }),
     );
@@ -151,8 +151,8 @@ describe("InboardLanguageModel", () => {
 
   it("warns for tool definitions and ignores them", async () => {
     const r = await model().doGenerate(
-      callOptions([{ role: "user", content: [{ type: "text", text: "x" }] }], {
-        tools: [{ type: "function", name: "lookup", inputSchema: { type: "object" } }],
+      callOptions([{ content: [{ text: "x", type: "text" }], role: "user" }], {
+        tools: [{ inputSchema: { type: "object" }, name: "lookup", type: "function" }],
       }),
     );
     expect(r.warnings.some((w) => featureOf(w) === "tools")).toBe(true);
@@ -161,7 +161,7 @@ describe("InboardLanguageModel", () => {
   it("throws INVALID_OPTIONS for a required tool choice", async () => {
     const err = await model()
       .doGenerate(
-        callOptions([{ role: "user", content: [{ type: "text", text: "x" }] }], {
+        callOptions([{ content: [{ text: "x", type: "text" }], role: "user" }], {
           toolChoice: { type: "required" },
         }),
       )
@@ -174,12 +174,14 @@ describe("InboardLanguageModel", () => {
 
   it("doStream emits the spec part sequence in order", async () => {
     const { stream } = await model().doStream(
-      callOptions([{ role: "user", content: [{ type: "text", text: "one two" }] }], {
+      callOptions([{ content: [{ text: "one two", type: "text" }], role: "user" }], {
         temperature: 0,
       }),
     );
     const parts: LanguageModelV4StreamPart[] = [];
-    for await (const part of stream) parts.push(part);
+    for await (const part of stream) {
+      parts.push(part);
+    }
 
     expect(parts.map((p) => p.type)).toEqual([
       "stream-start",
@@ -200,28 +202,32 @@ describe("InboardLanguageModel", () => {
       .join("");
     expect(text).toBe("reply to one two");
     const finish = parts.at(-1);
-    expect(finish).toMatchObject({ type: "finish", finishReason: { unified: "stop" } });
+    expect(finish).toMatchObject({ finishReason: { unified: "stop" }, type: "finish" });
   });
 
   it("doStream with a JSON schema emits the grammar output as one delta", async () => {
     backend = createFakeBackend({ respond: () => '{"label":"ham"}' });
     const { stream } = await model().doStream(
-      callOptions([{ role: "user", content: [{ type: "text", text: "classify" }] }], {
+      callOptions([{ content: [{ text: "classify", type: "text" }], role: "user" }], {
         responseFormat: {
+          schema: { properties: { label: { type: "string" } }, type: "object" },
           type: "json",
-          schema: { type: "object", properties: { label: { type: "string" } } },
         },
       }),
     );
     const deltas: string[] = [];
-    for await (const part of stream) if (part.type === "text-delta") deltas.push(part.delta);
+    for await (const part of stream) {
+      if (part.type === "text-delta") {
+        deltas.push(part.delta);
+      }
+    }
     expect(deltas).toEqual(['{"label":"ham"}']);
     expect(backend.grammarBuilds).toBe(1);
   });
 
   it("json response format without a schema warns that output is not guaranteed", async () => {
     const r = await model().doGenerate(
-      callOptions([{ role: "user", content: [{ type: "text", text: "json please" }] }], {
+      callOptions([{ content: [{ text: "json please", type: "text" }], role: "user" }], {
         responseFormat: { type: "json" },
       }),
     );

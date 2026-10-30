@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
 import { InboardError } from "@/core/errors.js";
 import type { JsonSchemaObject, Message, ZodLikeSchema } from "@/core/types.js";
 
@@ -65,8 +66,8 @@ export async function zodToJsonSchema(schema: ZodLikeSchema): Promise<JsonSchema
     zod = await import("zod");
   } catch (err) {
     throw new InboardError("INVALID_OPTIONS", "A Zod schema was passed, but zod is not installed", {
-      hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
       cause: err,
+      hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
     });
   }
   if (typeof zod.toJSONSchema !== "function") {
@@ -81,8 +82,8 @@ export async function zodToJsonSchema(schema: ZodLikeSchema): Promise<JsonSchema
   return rewriteAnyOf(rest) as JsonSchemaObject;
 }
 
-const SAFE_INT_MIN = -9007199254740991;
-const SAFE_INT_MAX = 9007199254740991;
+const SAFE_INT_MIN = -9_007_199_254_740_991;
+const SAFE_INT_MAX = 9_007_199_254_740_991;
 
 /**
  * Rewrites Zod's output into the grammar's subset. `anyOf` becomes `oneOf`. For `integer`, the
@@ -90,22 +91,27 @@ const SAFE_INT_MAX = 9007199254740991;
  * inside them. Any other bound is kept, so it is still rejected as unsupported.
  */
 function rewriteAnyOf(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(rewriteAnyOf);
-  if (typeof value !== "object" || value === null) return value;
+  if (Array.isArray(value)) {
+    return value.map(rewriteAnyOf);
+  }
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
 
-  const node = { ...(value as Record<string, unknown>) };
+  let node: Record<string, unknown> = { ...(value as Record<string, unknown>) };
   if (Array.isArray(node.anyOf)) {
-    node.oneOf = node.anyOf;
-    delete node.anyOf;
+    const { anyOf, ...rest } = node;
+    node = { ...rest, oneOf: anyOf };
   }
   if (node.type === "integer" && node.minimum === SAFE_INT_MIN && node.maximum === SAFE_INT_MAX) {
-    delete node.minimum;
-    delete node.maximum;
+    const { minimum: _minimum, maximum: _maximum, ...rest } = node;
+    node = rest;
   }
-  for (const key of Object.keys(node)) {
-    node[key] = rewriteAnyOf(node[key]);
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(node)) {
+    out[key] = rewriteAnyOf(child);
   }
-  return node;
+  return out;
 }
 
 /**
@@ -116,15 +122,20 @@ export function assertSupportedSchema(schema: JsonSchemaObject): void {
   walk(schema, "#");
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one check per JSON Schema keyword, kept flat for auditability
 function walk(node: unknown, path: string): void {
-  if (typeof node === "boolean") return;
+  if (typeof node === "boolean") {
+    return;
+  }
   if (typeof node !== "object" || node === null || Array.isArray(node)) {
     throw unsupported(path, "a schema must be an object");
   }
   const record = node as Record<string, unknown>;
 
   for (const key of Object.keys(record)) {
-    if (ANNOTATION_KEYWORDS.has(key)) continue;
+    if (ANNOTATION_KEYWORDS.has(key)) {
+      continue;
+    }
     if (!SUPPORTED_KEYWORDS.has(key)) {
       throw unsupported(
         `${path}/${key}`,
@@ -162,7 +173,9 @@ function walk(node: unknown, path: string): void {
       walk(sub, `${path}/properties/${name}`);
     }
   }
-  if ("items" in record) walk(record.items, `${path}/items`);
+  if ("items" in record) {
+    walk(record.items, `${path}/items`);
+  }
   if (Array.isArray(record.prefixItems)) {
     record.prefixItems.forEach((sub, i) => {
       walk(sub, `${path}/prefixItems/${i}`);
@@ -203,9 +216,9 @@ export function withSchemaInstruction(
   const instruction = `Reply with only a JSON value that matches the JSON Schema${label} below. Do not add any other text.\n${JSON.stringify(schema)}`;
   const [first, ...rest] = messages;
   if (first?.role === "system") {
-    return [{ role: "system", content: `${first.content}\n\n${instruction}` }, ...rest];
+    return [{ content: `${first.content}\n\n${instruction}`, role: "system" }, ...rest];
   }
-  return [{ role: "system", content: instruction }, ...messages];
+  return [{ content: instruction, role: "system" }, ...messages];
 }
 
 /** Maps a parse or validation failure to `SCHEMA_VIOLATION`. */
@@ -214,8 +227,8 @@ export function schemaViolation(detail: string, cause?: unknown): InboardError {
     "SCHEMA_VIOLATION",
     `The model output did not match the schema: ${detail}`,
     {
-      hint: "Raise maxTokens if the output was cut short, or simplify the schema.",
       cause,
+      hint: "Raise maxTokens if the output was cut short, or simplify the schema.",
     },
   );
 }

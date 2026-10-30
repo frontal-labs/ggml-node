@@ -27,28 +27,28 @@ describe("assertSupportedSchema", () => {
   it("accepts the supported subset", () => {
     expect(() =>
       assertSupportedSchema({
-        type: "object",
+        additionalProperties: false,
         description: "a label",
         properties: {
-          label: { type: "string", enum: ["spam", "ham"] },
-          score: { type: "number" },
-          tags: { type: "array", items: { type: "string" }, maxItems: 5 },
-          when: { type: "string", format: "date-time" },
+          label: { enum: ["spam", "ham"], type: "string" },
           maybe: { type: ["string", "null"] },
+          score: { type: "number" },
+          tags: { items: { type: "string" }, maxItems: 5, type: "array" },
+          when: { format: "date-time", type: "string" },
         },
         required: ["label", "score"],
-        additionalProperties: false,
+        type: "object",
       }),
     ).not.toThrow();
   });
 
   it("rejects keywords the grammar cannot enforce, and names the keyword", () => {
     for (const bad of [
-      { type: "number", minimum: 0 },
-      { type: "string", pattern: "^a" },
-      { type: "string", format: "email" },
+      { minimum: 0, type: "number" },
+      { pattern: "^a", type: "string" },
+      { format: "email", type: "string" },
       { anyOf: [{ type: "string" }, { type: "null" }] },
-      { type: "object", properties: { a: { type: "string", multipleOf: 2 } } },
+      { properties: { a: { multipleOf: 2, type: "string" } }, type: "object" },
     ]) {
       expectCode(() => assertSupportedSchema(bad), "INVALID_OPTIONS");
     }
@@ -56,7 +56,7 @@ describe("assertSupportedSchema", () => {
 
   it("names the offending keyword in the message", () => {
     try {
-      assertSupportedSchema({ type: "object", properties: { n: { type: "number", minimum: 1 } } });
+      assertSupportedSchema({ properties: { n: { minimum: 1, type: "number" } }, type: "object" });
       throw new Error("expected a throw");
     } catch (err) {
       expect(isInboardError(err) && err.message).toContain('"minimum"');
@@ -71,9 +71,9 @@ describe("assertSupportedSchema", () => {
     );
     expect(() =>
       assertSupportedSchema({
-        type: "object",
-        properties: { child: { $ref: "#/$defs/node" } },
         $defs: { node: { type: "string" } },
+        properties: { child: { $ref: "#/$defs/node" } },
+        type: "object",
       }),
     ).not.toThrow();
   });
@@ -109,7 +109,7 @@ describe("zodToJsonSchema", () => {
 
   it("drops only the safe-integer bounds Zod adds to every integer", async () => {
     const json = await zodToJsonSchema(z.object({ age: z.number().int() }));
-    const age = (json.properties as Record<string, Record<string, unknown>>).age;
+    const { age } = json.properties as Record<string, Record<string, unknown>>;
     expect(age).toEqual({ type: "integer" });
     expect(() => assertSupportedSchema(json)).not.toThrow();
   });
@@ -122,16 +122,16 @@ describe("zodToJsonSchema", () => {
 
 describe("withSchemaInstruction", () => {
   it("adds a system message when there is none", () => {
-    const out = withSchemaInstruction([{ role: "user", content: "hi" }], { type: "string" });
+    const out = withSchemaInstruction([{ content: "hi", role: "user" }], { type: "string" });
     expect(out[0]?.role).toBe("system");
     expect(out[0]?.content).toContain('{"type":"string"}');
-    expect(out[1]).toEqual({ role: "user", content: "hi" });
+    expect(out[1]).toEqual({ content: "hi", role: "user" });
   });
 
   it("appends to an existing system message", () => {
     const messages: Message[] = [
-      { role: "system", content: "Be terse." },
-      { role: "user", content: "hi" },
+      { content: "Be terse.", role: "system" },
+      { content: "hi", role: "user" },
     ];
     const out = withSchemaInstruction(messages, { type: "string" }, "Answer");
     expect(out).toHaveLength(2);
@@ -147,32 +147,32 @@ describe("object()", () => {
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
   });
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
   });
 
   function make(reply: string) {
     const backend = createFakeBackend({ respond: () => reply });
     const deps: InboardDeps = {
       createBackend: () => backend,
-      readMeta: async () => ({
-        sizeBytes: 100,
-        trainContextSize: 4096,
-        shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
-      }),
+      env: { INBOARD_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
-        cgroupLimitBytes: async () => undefined,
         cgroupCurrentBytes: async () => undefined,
+        cgroupLimitBytes: async () => undefined,
       },
-      env: { INBOARD_CACHE_DIR: dir },
+      readMeta: async () => ({
+        shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
+        sizeBytes: 100,
+        trainContextSize: 4096,
+      }),
     };
-    return { backend, ai: createInboardWithDeps({ model: { path: join(dir, "m.gguf") } }, deps) };
+    return { ai: createInboardWithDeps({ model: { path: join(dir, "m.gguf") } }, deps), backend };
   }
 
   it("returns the parsed object with raw text and the generation metadata", async () => {
     const schema = z.object({ label: z.enum(["spam", "ham"]), score: z.number() });
     const { ai, backend } = make('{"label":"spam","score":0.9}');
-    const r = await ai.object({ schema, prompt: "Classify: win money now" });
+    const r = await ai.object({ prompt: "Classify: win money now", schema });
     expect(r.object).toEqual({ label: "spam", score: 0.9 });
     expect(r.raw).toBe('{"label":"spam","score":0.9}');
     expect(r.usage.outputTokens).toBeGreaterThan(0);
@@ -182,7 +182,7 @@ describe("object()", () => {
   it("throws SCHEMA_VIOLATION when Zod validation fails", async () => {
     const schema = z.object({ label: z.enum(["spam", "ham"]) });
     const { ai } = make('{"label":"maybe"}');
-    const err = await ai.object({ schema, prompt: "x" }).then(
+    const err = await ai.object({ prompt: "x", schema }).then(
       () => undefined,
       (e: unknown) => e,
     );
@@ -191,7 +191,7 @@ describe("object()", () => {
 
   it("throws SCHEMA_VIOLATION when the output is not JSON", async () => {
     const { ai } = make("not json at all");
-    const err = await ai.object({ schema: { type: "object" }, prompt: "x" }).then(
+    const err = await ai.object({ prompt: "x", schema: { type: "object" } }).then(
       () => undefined,
       (e: unknown) => e,
     );
@@ -201,8 +201,8 @@ describe("object()", () => {
   it("accepts a plain JSON Schema and returns unknown unless a type is given", async () => {
     const { ai } = make('{"name":"x"}');
     const r = await ai.object({
-      schema: { type: "object", properties: { name: { type: "string" } } },
       prompt: "x",
+      schema: { properties: { name: { type: "string" } }, type: "object" },
     });
     expect(r.object).toEqual({ name: "x" });
   });
@@ -211,8 +211,8 @@ describe("object()", () => {
     const { ai } = make("{}");
     const err = await ai
       .object({
-        schema: { type: "object", properties: { n: { type: "number", minimum: 0 } } },
         prompt: "x",
+        schema: { properties: { n: { minimum: 0, type: "number" } }, type: "object" },
       })
       .then(
         () => undefined,
@@ -224,7 +224,7 @@ describe("object()", () => {
   it("rejects a schema argument that is not an object", async () => {
     const { ai } = make("{}");
     const err = await ai
-      .object({ schema: "nope" as unknown as Record<string, unknown>, prompt: "x" })
+      .object({ prompt: "x", schema: "nope" as unknown as Record<string, unknown> })
       .then(
         () => undefined,
         (e: unknown) => e,

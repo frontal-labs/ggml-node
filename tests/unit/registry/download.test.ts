@@ -26,7 +26,7 @@ describe("downloadFile", () => {
   afterEach(async () => {
     await server?.close();
     server = undefined;
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
   });
 
   async function serve(options: FixtureOptions = {}) {
@@ -40,11 +40,11 @@ describe("downloadFile", () => {
     const dest = join(dir, "model.gguf");
 
     const result = await downloadFile({
-      url: s.url,
-      sha256: sha(body),
-      sizeBytes: body.length,
       destPath: dest,
       onProgress: (received) => progress.push(received),
+      sha256: sha(body),
+      sizeBytes: body.length,
+      url: s.url,
     });
 
     expect(result).toBe(dest);
@@ -61,17 +61,19 @@ describe("downloadFile", () => {
     const wrong = sha(Buffer.from("not the model"));
 
     const err = await downloadFile({
-      url: s.url,
+      destPath: dest,
       sha256: wrong,
       sizeBytes: body.length,
-      destPath: dest,
+      url: s.url,
     }).then(
       () => undefined,
       (e: unknown) => e,
     );
 
     expect(isInboardError(err)).toBe(true);
-    if (!isInboardError(err)) throw new Error("unreachable");
+    if (!isInboardError(err)) {
+      throw new Error("unreachable");
+    }
     expect(err.code).toBe("CHECKSUM_MISMATCH");
     expect(err.hint).not.toBe("");
     await expect(stat(dest)).rejects.toThrow();
@@ -79,9 +81,46 @@ describe("downloadFile", () => {
   });
 
   it("resumes an interrupted download with a Range request", async () => {
-    const s = await serve({ truncateFirstAfter: 100_000 });
+    const s = await serve();
     const dest = join(dir, "model.gguf");
-    const request = { url: s.url, sha256: sha(body), sizeBytes: body.length, destPath: dest };
+    const cut = 100_000;
+    // The first attempt streams `cut` bytes and then fails, like a dropped connection.
+    // The retry uses the real server, so the Range request is still checked end to end.
+    let attempts = 0;
+    const flakyFetch: typeof fetch = async (input, init) => {
+      attempts += 1;
+      const real = await fetch(input, init);
+      if (attempts > 1 || !real.body) {
+        return real;
+      }
+      const reader = real.body.getReader();
+      let sent = 0;
+      const truncated = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          const { value, done } = await reader.read();
+          if (done) {
+            controller.close();
+            return;
+          }
+          const room = cut - sent;
+          if (room <= 0) {
+            controller.error(new Error("connection reset"));
+            return;
+          }
+          const piece = value.subarray(0, room);
+          sent += piece.byteLength;
+          controller.enqueue(piece);
+        },
+      });
+      return new Response(truncated, { headers: real.headers, status: real.status });
+    };
+    const request = {
+      destPath: dest,
+      fetch: flakyFetch,
+      sha256: sha(body),
+      sizeBytes: body.length,
+      url: s.url,
+    };
 
     const first = await downloadFile(request).then(
       () => undefined,
@@ -102,7 +141,7 @@ describe("downloadFile", () => {
     const dest = join(dir, "model.gguf");
     await writeFile(`${dest}.partial`, body.subarray(0, 50_000));
 
-    await downloadFile({ url: s.url, sha256: sha(body), sizeBytes: body.length, destPath: dest });
+    await downloadFile({ destPath: dest, sha256: sha(body), sizeBytes: body.length, url: s.url });
 
     expect(s.requests[0]).toBe("bytes=50000-");
     expect(Buffer.compare(await readFile(dest), body)).toBe(0);
@@ -113,7 +152,7 @@ describe("downloadFile", () => {
     const dest = join(dir, "model.gguf");
     await writeFile(`${dest}.partial`, Buffer.alloc(body.length + 10, 1));
 
-    await downloadFile({ url: s.url, sha256: sha(body), sizeBytes: body.length, destPath: dest });
+    await downloadFile({ destPath: dest, sha256: sha(body), sizeBytes: body.length, url: s.url });
 
     expect(Buffer.compare(await readFile(dest), body)).toBe(0);
     expect(s.requests).toEqual([undefined]);
@@ -122,7 +161,7 @@ describe("downloadFile", () => {
   it("runs one download for concurrent callers in the same process", async () => {
     const s = await serve();
     const dest = join(dir, "model.gguf");
-    const request = { url: s.url, sha256: sha(body), sizeBytes: body.length, destPath: dest };
+    const request = { destPath: dest, sha256: sha(body), sizeBytes: body.length, url: s.url };
 
     const results = await Promise.all([1, 2, 3, 4, 5].map(() => downloadFile(request)));
 
@@ -135,13 +174,15 @@ describe("downloadFile", () => {
     const dest = join(dir, "model.gguf");
     // process.pid is alive, so this lock is not stale. Another "process" is downloading.
     await writeFile(`${dest}.lock`, JSON.stringify({ pid: process.pid, startedAt: Date.now() }));
-    setTimeout(() => void writeFile(dest, body), 400);
+    setTimeout(() => {
+      writeFile(dest, body).catch(() => undefined);
+    }, 400);
 
     const result = await downloadFile({
-      url: s.url,
+      destPath: dest,
       sha256: sha(body),
       sizeBytes: body.length,
-      destPath: dest,
+      url: s.url,
     });
 
     expect(result).toBe(dest);
@@ -153,9 +194,9 @@ describe("downloadFile", () => {
     const s = await serve();
     const dest = join(dir, "model.gguf");
     // PID 2^22 is above the default kernel PID limit on macOS and Linux, so it cannot be alive.
-    await writeFile(`${dest}.lock`, JSON.stringify({ pid: 4194304, startedAt: 0 }));
+    await writeFile(`${dest}.lock`, JSON.stringify({ pid: 4_194_304, startedAt: 0 }));
 
-    await downloadFile({ url: s.url, sha256: sha(body), sizeBytes: body.length, destPath: dest });
+    await downloadFile({ destPath: dest, sha256: sha(body), sizeBytes: body.length, url: s.url });
 
     expect(Buffer.compare(await readFile(dest), body)).toBe(0);
     await expect(stat(`${dest}.lock`)).rejects.toThrow();
@@ -168,11 +209,11 @@ describe("downloadFile", () => {
     setTimeout(() => controller.abort(), 200);
 
     const err = await downloadFile({
-      url: s.url,
-      sha256: sha(body),
-      sizeBytes: body.length,
       destPath: dest,
+      sha256: sha(body),
       signal: controller.signal,
+      sizeBytes: body.length,
+      url: s.url,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -189,10 +230,10 @@ describe("downloadFile", () => {
     const dest = join(dir, "model.gguf");
 
     const err = await downloadFile({
-      url: s.url,
+      destPath: dest,
       sha256: sha(body),
       sizeBytes: body.length,
-      destPath: dest,
+      url: s.url,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -213,7 +254,7 @@ describe("verifyFile", () => {
       expect(await verifyFile(path, sha(data))).toBe(true);
       expect(await verifyFile(path, sha(Buffer.from("other")))).toBe(false);
     } finally {
-      await rm(dir, { recursive: true, force: true });
+      await rm(dir, { force: true, recursive: true });
     }
   });
 });

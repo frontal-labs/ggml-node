@@ -10,17 +10,17 @@ import { z } from "zod";
  */
 export const envSchema = {
   INBOARD_CACHE_DIR: z.string().min(1).optional(),
-  INBOARD_OFFLINE: z.string().optional(),
-  XDG_CACHE_HOME: z.string().min(1).optional(),
-  LOCALAPPDATA: z.string().min(1).optional(),
   /** Test-only switch. Enables the real-model suites under `tests/e2e`. */
   INBOARD_E2E: z.string().optional(),
+  INBOARD_OFFLINE: z.string().optional(),
+  LOCALAPPDATA: z.string().min(1).optional(),
+  XDG_CACHE_HOME: z.string().min(1).optional(),
 } as const;
 
 export const env = createEnv({
-  server: envSchema,
-  runtimeEnv: process.env,
   emptyStringAsUndefined: true,
+  runtimeEnv: process.env,
+  server: envSchema,
 });
 
 /** The environment shape, with every variable optional. Functions accept this so tests can inject one. */

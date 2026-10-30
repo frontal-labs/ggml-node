@@ -7,7 +7,9 @@ export type InboardEventListener = (event: InboardEvent) => void;
  * A listener that throws is isolated, so a logging hook cannot break inference.
  */
 export function emitEvent(listener: InboardEventListener | undefined, event: InboardEvent): void {
-  if (!listener) return;
+  if (!listener) {
+    return;
+  }
   try {
     listener(event);
   } catch {

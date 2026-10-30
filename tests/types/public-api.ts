@@ -15,7 +15,7 @@ export async function assertPublicTypes(): Promise<void> {
   createInboard({ model: "qwen2.5-0.5b" });
   createInboard({ model: { path: "./models/custom.gguf" } });
   // @ts-expect-error maxTokens is not an InboardOptions field
-  createInboard({ model: "qwen2.5-0.5b", maxTokens: 10 });
+  createInboard({ maxTokens: 10, model: "qwen2.5-0.5b" });
 
   const ai = null as unknown as Inboard;
   expectTypeOf(ai.generate).returns.resolves.toEqualTypeOf<GenerateResult>();
@@ -27,12 +27,12 @@ export async function assertPublicTypes(): Promise<void> {
   expectTypeOf(typed).toEqualTypeOf<ObjectResult<z.infer<typeof schema>>>();
   expectTypeOf(typed.object.label).toEqualTypeOf<"spam" | "ham">();
 
-  const json = { type: "object", properties: { name: { type: "string" } } } as const;
+  const json = { properties: { name: { type: "string" } }, type: "object" } as const;
   const untyped = await ai.object({ schema: json });
   expectTypeOf(untyped.object).toEqualTypeOf<unknown>();
   const named = await ai.object<{ name: string }>({ schema: json });
   expectTypeOf(named.object).toEqualTypeOf<{ name: string }>();
 
   // @ts-expect-error exactOptionalPropertyTypes: optional fields reject explicit undefined
-  createInboard({ model: "qwen2.5-0.5b", contextSize: undefined });
+  createInboard({ contextSize: undefined, model: "qwen2.5-0.5b" });
 }

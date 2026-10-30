@@ -3,11 +3,11 @@ import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { Inboard } from "@/core/types.js";
 
 export interface MockInboardOptions {
+  delayMs?: number;
   respond?:
     | string
     | string[]
     | ((req: { messages: { role: string; content: string }[] }) => string);
-  delayMs?: number;
   tokensPerChunk?: number;
 }
 

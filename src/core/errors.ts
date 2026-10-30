@@ -16,9 +16,9 @@ export const INBOARD_ERROR_CODES = [
 export type InboardErrorCode = (typeof INBOARD_ERROR_CODES)[number];
 
 export interface InboardErrorOptions {
+  cause?: unknown;
   /** Actionable next step, e.g. "Run: npx inboard pull qwen2.5-0.5b". Must be non-empty. */
   hint: string;
-  cause?: unknown;
 }
 
 export class InboardError extends Error {

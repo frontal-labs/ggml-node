@@ -3,15 +3,15 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: [{ find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/` }],
+    alias: [{ find: /^@\//u, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/` }],
   },
   test: {
-    include: ["tests/unit/**/*.test.ts", "tests/e2e/**/*.test.ts"],
-    environment: "node",
     coverage: {
-      provider: "v8",
       include: ["src/core/**", "src/registry/**", "src/ai/**"],
+      provider: "v8",
       thresholds: { lines: 85 },
     },
+    environment: "node",
+    include: ["tests/unit/**/*.test.ts", "tests/e2e/**/*.test.ts"],
   },
 });

@@ -10,7 +10,7 @@ import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-b
 
 const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };
 
-async function codeOf(p: Promise<unknown>): Promise<string | undefined> {
+function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   return p.then(
     () => undefined,
     (e: unknown) => (isInboardError(e) ? e.code : `NOT_INBOARD:${String(e)}`),
@@ -30,7 +30,7 @@ describe("createInboard", () => {
   });
 
   afterEach(async () => {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
   });
 
   function make(
@@ -41,13 +41,13 @@ describe("createInboard", () => {
     const backend = createFakeBackend(backendOptions);
     const deps: InboardDeps = {
       createBackend: () => backend,
-      readMeta: async () => ({ sizeBytes: 1000, trainContextSize: 4096, shape: SHAPE }),
+      env: { INBOARD_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
-        cgroupLimitBytes: async () => undefined,
         cgroupCurrentBytes: async () => undefined,
+        cgroupLimitBytes: async () => undefined,
       },
-      env: { INBOARD_CACHE_DIR: dir },
+      readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
       ...depsOverride,
     };
     const ai: Inboard = createInboardWithDeps(
@@ -76,7 +76,7 @@ describe("createInboard", () => {
     });
 
     it("loads once, even with concurrent calls", async () => {
-      const { ai, backend } = make({ model: custom(), maxConcurrency: 2 });
+      const { ai, backend } = make({ maxConcurrency: 2, model: custom() });
       await Promise.all([
         ai.ready(),
         ai.ready(),
@@ -87,7 +87,7 @@ describe("createInboard", () => {
     });
 
     it("runs no more requests at once than maxConcurrency", async () => {
-      const { ai, backend } = make({ model: custom(), maxConcurrency: 2 }, { delayMs: 2 });
+      const { ai, backend } = make({ maxConcurrency: 2, model: custom() }, { delayMs: 2 });
       await Promise.all([1, 2, 3, 4].map((i) => ai.generate({ prompt: `q${i}` })));
       expect(backend.maxActive).toBe(2);
     });
@@ -100,7 +100,7 @@ describe("createInboard", () => {
     });
 
     it("rejects with QUEUE_FULL when the queue is full", async () => {
-      const { ai } = make({ model: custom(), maxConcurrency: 1, maxQueue: 0 }, { delayMs: 5 });
+      const { ai } = make({ maxConcurrency: 1, maxQueue: 0, model: custom() }, { delayMs: 5 });
       const first = ai.generate({ prompt: "slow one two three" });
       const second = ai.generate({ prompt: "x" });
       expect(await codeOf(second)).toBe("QUEUE_FULL");
@@ -117,7 +117,7 @@ describe("createInboard", () => {
 
     it("rejects with ABORTED when aborted while queued, and never runs that request", async () => {
       const { ai, backend } = make(
-        { model: custom(), maxConcurrency: 1, maxQueue: 5 },
+        { maxConcurrency: 1, maxQueue: 5, model: custom() },
         { delayMs: 5 },
       );
       const running = ai.generate({ prompt: "first long prompt here" });
@@ -150,23 +150,23 @@ describe("createInboard", () => {
     });
 
     it("throws INVALID_OPTIONS when maxTokens is not below contextSize", async () => {
-      const { ai } = make({ model: custom(), contextSize: 8 });
-      expect(await codeOf(ai.generate({ prompt: "hi", maxTokens: 8 }))).toBe("INVALID_OPTIONS");
+      const { ai } = make({ contextSize: 8, model: custom() });
+      expect(await codeOf(ai.generate({ maxTokens: 8, prompt: "hi" }))).toBe("INVALID_OPTIONS");
     });
 
     it("throws CONTEXT_OVERFLOW when the prompt cannot fit and overflow is error", async () => {
-      const { ai } = make({ model: custom(), contextSize: 10 });
+      const { ai } = make({ contextSize: 10, model: custom() });
       const long = Array.from({ length: 30 }, () => "word").join(" ");
-      expect(await codeOf(ai.generate({ prompt: long, maxTokens: 2 }))).toBe("CONTEXT_OVERFLOW");
+      expect(await codeOf(ai.generate({ maxTokens: 2, prompt: long }))).toBe("CONTEXT_OVERFLOW");
     });
 
     it("still throws CONTEXT_OVERFLOW under truncate-start when the last user message alone is too big", async () => {
-      const { ai } = make({ model: custom(), contextSize: 40 });
+      const { ai } = make({ contextSize: 40, model: custom() });
       const long = Array.from({ length: 60 }, (_, i) => `w${i}`).join(" ");
       const r = await ai
         .generate({
-          messages: [{ role: "user", content: long }],
           maxTokens: 2,
+          messages: [{ content: long, role: "user" }],
           overflow: "truncate-start",
         })
         .catch((e: unknown) => e);
@@ -180,7 +180,9 @@ describe("createInboard", () => {
       const { ai } = make({ model: custom() });
       const s = ai.stream({ prompt: "one two three" });
       const pieces: string[] = [];
-      for await (const piece of s.textStream) pieces.push(piece);
+      for await (const piece of s.textStream) {
+        pieces.push(piece);
+      }
       const r = await s.result;
       expect(pieces.join("")).toBe("echo: one two three");
       expect(r.text).toBe("echo: one two three");
@@ -194,7 +196,9 @@ describe("createInboard", () => {
       const reading = (async () => {
         for await (const piece of s.textStream) {
           seen.push(piece);
-          if (seen.length === 2) s.abort();
+          if (seen.length === 2) {
+            s.abort();
+          }
         }
       })();
       const r = await s.result;
@@ -206,7 +210,7 @@ describe("createInboard", () => {
 
     it("abort while queued resolves with empty text and never runs", async () => {
       const { ai, backend } = make(
-        { model: custom(), maxConcurrency: 1, maxQueue: 5 },
+        { maxConcurrency: 1, maxQueue: 5, model: custom() },
         { delayMs: 5 },
       );
       const running = ai.generate({ prompt: "first one" });
@@ -225,7 +229,9 @@ describe("createInboard", () => {
       await expect(s.result).rejects.toMatchObject({ code: "BACKEND_CRASHED" });
       await expect(
         (async () => {
-          for await (const _ of s.textStream) void _;
+          for await (const _ of s.textStream) {
+            // Drain the stream. Only the result matters here.
+          }
         })(),
       ).rejects.toMatchObject({ code: "BACKEND_CRASHED" });
     });
@@ -233,7 +239,7 @@ describe("createInboard", () => {
 
   describe("lifecycle", () => {
     it("info() is null before load and set after ready()", async () => {
-      const { ai } = make({ model: custom(), contextSize: 512 });
+      const { ai } = make({ contextSize: 512, model: custom() });
       expect(ai.info()).toBeNull();
       const info = await ai.ready();
       expect(info.contextSize).toBe(512);
@@ -275,13 +281,13 @@ describe("createInboard", () => {
     });
 
     it("rejects invalid concurrency and queue values", () => {
-      expect(() => make({ model: custom(), maxConcurrency: 0 })).toThrow();
-      expect(() => make({ model: custom(), maxQueue: -1 })).toThrow();
+      expect(() => make({ maxConcurrency: 0, model: custom() })).toThrow();
+      expect(() => make({ maxQueue: -1, model: custom() })).toThrow();
     });
 
     it("rejects isolation: process until it is implemented", () => {
       try {
-        make({ model: custom(), isolation: "process" });
+        make({ isolation: "process", model: custom() });
         expect.unreachable();
       } catch (err) {
         expect(isInboardError(err) && err.code).toBe("INVALID_OPTIONS");
@@ -295,13 +301,13 @@ describe("createInboard", () => {
 
     it("runs the memory preflight before loading and reports OUT_OF_MEMORY", async () => {
       const { ai, backend } = make(
-        { model: custom(), maxConcurrency: 4, contextSize: 4096 },
+        { contextSize: 4096, maxConcurrency: 4, model: custom() },
         {},
         {
           memory: {
             availableSystemBytes: async () => 1000,
-            cgroupLimitBytes: async () => undefined,
             cgroupCurrentBytes: async () => undefined,
+            cgroupLimitBytes: async () => undefined,
           },
         },
       );

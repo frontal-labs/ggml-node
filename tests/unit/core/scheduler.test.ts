@@ -6,7 +6,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe("Scheduler", () => {
   it("hands out sequences up to the pool size, then queues FIFO", async () => {
-    const s = new Scheduler({ sequences: 2, maxQueue: 10 });
+    const s = new Scheduler({ maxQueue: 10, sequences: 2 });
     const a = await s.acquire(undefined);
     const b = await s.acquire(undefined);
     expect(new Set([a.index, b.index]).size).toBe(2);
@@ -34,7 +34,7 @@ describe("Scheduler", () => {
   });
 
   it("never runs more requests than there are sequences", async () => {
-    const s = new Scheduler({ sequences: 2, maxQueue: 10 });
+    const s = new Scheduler({ maxQueue: 10, sequences: 2 });
     let active = 0;
     let peak = 0;
     await Promise.all(
@@ -51,9 +51,9 @@ describe("Scheduler", () => {
   });
 
   it("rejects with QUEUE_FULL when the queue is at maxQueue", async () => {
-    const s = new Scheduler({ sequences: 1, maxQueue: 1 });
+    const s = new Scheduler({ maxQueue: 1, sequences: 1 });
     const held = await s.acquire(undefined);
-    void s.acquire(undefined); // occupies the single queue slot
+    s.acquire(undefined).catch(() => undefined); // occupies the single queue slot
     const err = await s.acquire(undefined).then(
       () => undefined,
       (e: unknown) => e,
@@ -64,7 +64,7 @@ describe("Scheduler", () => {
   });
 
   it("removes an aborted request from the queue and rejects with ABORTED", async () => {
-    const s = new Scheduler({ sequences: 1, maxQueue: 5 });
+    const s = new Scheduler({ maxQueue: 5, sequences: 1 });
     const held = await s.acquire(undefined);
     const controller = new AbortController();
     const waiting = s.acquire(controller.signal);
@@ -85,7 +85,7 @@ describe("Scheduler", () => {
   });
 
   it("rejects immediately when the signal is already aborted", async () => {
-    const s = new Scheduler({ sequences: 1, maxQueue: 0 });
+    const s = new Scheduler({ maxQueue: 0, sequences: 1 });
     const controller = new AbortController();
     controller.abort();
     const err = await s.acquire(controller.signal).then(
@@ -96,7 +96,7 @@ describe("Scheduler", () => {
   });
 
   it("release is idempotent", async () => {
-    const s = new Scheduler({ sequences: 1, maxQueue: 0 });
+    const s = new Scheduler({ maxQueue: 0, sequences: 1 });
     const lease = await s.acquire(undefined);
     lease.release();
     lease.release();
@@ -104,10 +104,10 @@ describe("Scheduler", () => {
   });
 
   it("reports the queue length when a request has to wait", async () => {
-    const s = new Scheduler({ sequences: 1, maxQueue: 5 });
+    const s = new Scheduler({ maxQueue: 5, sequences: 1 });
     const held = await s.acquire(undefined);
     const seen: number[] = [];
-    void s.acquire(undefined, (n) => seen.push(n));
+    s.acquire(undefined, (n) => seen.push(n)).catch(() => undefined);
     expect(seen).toEqual([1]);
     held.release();
   });

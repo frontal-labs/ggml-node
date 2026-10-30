@@ -6,21 +6,21 @@ import { type CliIO, EXIT, runCli } from "@/cli/run.js";
 import { MODELS } from "@/registry/models.js";
 
 interface Captured {
+  err: string;
   io: CliIO;
   out: string;
-  err: string;
 }
 
 function capture(env: NodeJS.ProcessEnv): Captured {
-  const captured = { out: "", err: "" } as Captured;
+  const captured = { err: "", out: "" } as Captured;
   captured.io = {
-    stdout: (t) => {
-      captured.out += t;
-    },
+    env,
     stderr: (t) => {
       captured.err += t;
     },
-    env,
+    stdout: (t) => {
+      captured.out += t;
+    },
   };
   return captured;
 }
@@ -33,7 +33,7 @@ describe("inboard CLI", () => {
   });
 
   afterEach(async () => {
-    await rm(cacheDir, { recursive: true, force: true });
+    await rm(cacheDir, { force: true, recursive: true });
   });
 
   const env = () => ({ INBOARD_CACHE_DIR: cacheDir }) as NodeJS.ProcessEnv;

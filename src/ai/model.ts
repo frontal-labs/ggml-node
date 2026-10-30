@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/useAwait: doStream stays async so errors become rejections, as the SDK expects
 import type {
   LanguageModelV4,
   LanguageModelV4CallOptions,
@@ -26,13 +27,14 @@ export interface MappedPrompt {
 }
 
 /** Maps the AI SDK prompt to inboard messages. Unsupported parts are skipped with a warning. */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one branch per prompt part type, kept flat
 export function mapPrompt(prompt: LanguageModelV4Prompt): MappedPrompt {
   const messages: Message[] = [];
   const warnings: SharedV4Warning[] = [];
 
   for (const message of prompt) {
     if (message.role === "system") {
-      messages.push({ role: "system", content: message.content });
+      messages.push({ content: message.content, role: "system" });
       continue;
     }
 
@@ -73,14 +75,14 @@ export function mapPrompt(prompt: LanguageModelV4Prompt): MappedPrompt {
       }
     }
     if (texts.length > 0) {
-      messages.push({ role: message.role, content: texts.join("\n") });
+      messages.push({ content: texts.join("\n"), role: message.role });
     }
   }
   return { messages, warnings };
 }
 
 export function unsupported(feature: string, details: string): SharedV4Warning {
-  return { type: "unsupported", feature, details };
+  return { details, feature, type: "unsupported" };
 }
 
 /** Tool definitions are dropped with a warning. A required tool choice cannot be honoured, so it throws. */
@@ -105,39 +107,43 @@ function toolWarnings(options: LanguageModelV4CallOptions): SharedV4Warning[] {
 }
 
 function finishReasonFor(reason: GenerateResult["finishReason"]): LanguageModelV4FinishReason {
-  if (reason === "length") return { unified: "length", raw: "length" };
-  if (reason === "abort") return { unified: "other", raw: "abort" };
-  return { unified: "stop", raw: "stop" };
+  if (reason === "length") {
+    return { raw: "length", unified: "length" };
+  }
+  if (reason === "abort") {
+    return { raw: "abort", unified: "other" };
+  }
+  return { raw: "stop", unified: "stop" };
 }
 
 function usageFor(input: number, output: number): LanguageModelV4Usage {
   return {
-    inputTokens: { total: input, noCache: input, cacheRead: undefined, cacheWrite: undefined },
-    outputTokens: { total: output, text: output, reasoning: undefined },
+    inputTokens: { cacheRead: undefined, cacheWrite: undefined, noCache: input, total: input },
+    outputTokens: { reasoning: undefined, text: output, total: output },
   };
 }
 
 interface SharedCall {
-  messages: Message[];
   maxTokens: number | undefined;
-  temperature: number | undefined;
-  topP: number | undefined;
-  topK: number | undefined;
+  messages: Message[];
   seed: number | undefined;
-  stop: string[] | undefined;
   signal: AbortSignal | undefined;
+  stop: string[] | undefined;
+  temperature: number | undefined;
+  topK: number | undefined;
+  topP: number | undefined;
 }
 
 function sharedCall(options: LanguageModelV4CallOptions, messages: Message[]): SharedCall {
   return {
-    messages,
     maxTokens: options.maxOutputTokens,
-    temperature: options.temperature,
-    topP: options.topP,
-    topK: options.topK,
+    messages,
     seed: options.seed,
-    stop: options.stopSequences,
     signal: options.abortSignal,
+    stop: options.stopSequences,
+    temperature: options.temperature,
+    topK: options.topK,
+    topP: options.topP,
   };
 }
 
@@ -145,12 +151,12 @@ function sharedCall(options: LanguageModelV4CallOptions, messages: Message[]): S
 function toGenerateOptions(call: SharedCall): Parameters<Inboard["generate"]>[0] {
   return {
     messages: call.messages,
-    ...(call.maxTokens !== undefined ? { maxTokens: call.maxTokens } : {}),
-    ...(call.temperature !== undefined ? { temperature: call.temperature } : {}),
-    ...(call.topP !== undefined ? { topP: call.topP } : {}),
-    ...(call.topK !== undefined ? { topK: call.topK } : {}),
-    ...(call.seed !== undefined ? { seed: call.seed } : {}),
-    ...(call.stop !== undefined ? { stop: call.stop } : {}),
+    ...(call.maxTokens === undefined ? {} : { maxTokens: call.maxTokens }),
+    ...(call.temperature === undefined ? {} : { temperature: call.temperature }),
+    ...(call.topP === undefined ? {} : { topP: call.topP }),
+    ...(call.topK === undefined ? {} : { topK: call.topK }),
+    ...(call.seed === undefined ? {} : { seed: call.seed }),
+    ...(call.stop === undefined ? {} : { stop: call.stop }),
     ...(call.signal ? { signal: call.signal } : {}),
   };
 }
@@ -170,8 +176,9 @@ function jsonPlan(
   warnings: SharedV4Warning[];
 } {
   const format = options.responseFormat;
-  if (format?.type !== "json")
+  if (format?.type !== "json") {
     return { messages, schema: undefined, schemaName: undefined, warnings: [] };
+  }
 
   if (format.schema) {
     return {
@@ -183,7 +190,7 @@ function jsonPlan(
   }
   return {
     messages: [
-      { role: "system", content: "Reply with a single valid JSON value and nothing else." },
+      { content: "Reply with a single valid JSON value and nothing else.", role: "system" },
       ...messages,
     ],
     schema: undefined,
@@ -222,7 +229,7 @@ class InboardLanguageModel implements LanguageModelV4 {
         ...(plan.schemaName ? { schemaName: plan.schemaName } : {}),
       });
       return {
-        content: [{ type: "text", text: r.raw }],
+        content: [{ text: r.raw, type: "text" }],
         finishReason: finishReasonFor(r.finishReason),
         usage: usageFor(r.usage.inputTokens, r.usage.outputTokens),
         warnings,
@@ -231,7 +238,7 @@ class InboardLanguageModel implements LanguageModelV4 {
 
     const r = await this.inboard.generate(toGenerateOptions(sharedCall(options, plan.messages)));
     return {
-      content: [{ type: "text", text: r.text }],
+      content: [{ text: r.text, type: "text" }],
       finishReason: finishReasonFor(r.finishReason),
       usage: usageFor(r.usage.inputTokens, r.usage.outputTokens),
       warnings,
@@ -245,22 +252,25 @@ class InboardLanguageModel implements LanguageModelV4 {
     warnings.push(...plan.warnings);
 
     const id = "text-0";
-    const inboard = this.inboard;
+    const { inboard } = this;
     const call = toGenerateOptions(sharedCall(options, plan.messages));
 
     let abort: (() => void) | undefined;
     const stream = new ReadableStream<LanguageModelV4StreamPart>({
+      cancel: () => {
+        abort?.();
+      },
       start: (controller) => {
         controller.enqueue({ type: "stream-start", warnings });
-        controller.enqueue({ type: "text-start", id });
+        controller.enqueue({ id, type: "text-start" });
 
         const finish = (usage: LanguageModelV4Usage, reason: LanguageModelV4FinishReason) => {
-          controller.enqueue({ type: "text-end", id });
-          controller.enqueue({ type: "finish", usage, finishReason: reason });
+          controller.enqueue({ id, type: "text-end" });
+          controller.enqueue({ finishReason: reason, type: "finish", usage });
           controller.close();
         };
 
-        void (async () => {
+        (async () => {
           try {
             if (plan.schema) {
               // Structured output is not streamed token by token. The whole object arrives as one delta.
@@ -269,7 +279,7 @@ class InboardLanguageModel implements LanguageModelV4 {
                 schema: plan.schema,
                 ...(plan.schemaName ? { schemaName: plan.schemaName } : {}),
               });
-              controller.enqueue({ type: "text-delta", id, delta: r.raw });
+              controller.enqueue({ delta: r.raw, id, type: "text-delta" });
               finish(
                 usageFor(r.usage.inputTokens, r.usage.outputTokens),
                 finishReasonFor(r.finishReason),
@@ -280,7 +290,7 @@ class InboardLanguageModel implements LanguageModelV4 {
             const s = inboard.stream(call);
             abort = () => s.abort();
             for await (const delta of s.textStream) {
-              controller.enqueue({ type: "text-delta", id, delta });
+              controller.enqueue({ delta, id, type: "text-delta" });
             }
             const r = await s.result;
             finish(
@@ -288,13 +298,10 @@ class InboardLanguageModel implements LanguageModelV4 {
               finishReasonFor(r.finishReason),
             );
           } catch (err) {
-            controller.enqueue({ type: "error", error: err });
+            controller.enqueue({ error: err, type: "error" });
             controller.close();
           }
         })();
-      },
-      cancel: () => {
-        abort?.();
       },
     });
 

@@ -16,8 +16,8 @@ export type { ModelId } from "@/registry/models.js";
 export type InboardProviderSettings = Omit<InboardOptions, "model">;
 
 export interface InboardProvider {
+  languageModel: (modelId: ModelId) => LanguageModelV4;
   (modelId: ModelId): LanguageModelV4;
-  languageModel(modelId: ModelId): LanguageModelV4;
 }
 
 /** One provider per settings key, shared by `inboard()`. */

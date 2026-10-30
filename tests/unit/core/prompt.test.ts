@@ -19,8 +19,8 @@ describe("normalizeRequest", () => {
   it("turns prompt into one user message and prepends system", () => {
     const r = normalizeRequest({ prompt: "hi", system: "be brief" });
     expect(r.messages).toEqual([
-      { role: "system", content: "be brief" },
-      { role: "user", content: "hi" },
+      { content: "be brief", role: "system" },
+      { content: "hi", role: "user" },
     ]);
     expect(r.maxTokens).toBe(256);
     expect(r.temperature).toBe(0.7);
@@ -31,7 +31,7 @@ describe("normalizeRequest", () => {
     expect(await codeOf(() => normalizeRequest({}))).toBe("INVALID_OPTIONS");
     expect(
       await codeOf(() =>
-        normalizeRequest({ prompt: "a", messages: [{ role: "user", content: "b" }] }),
+        normalizeRequest({ messages: [{ content: "b", role: "user" }], prompt: "a" }),
       ),
     ).toBe("INVALID_OPTIONS");
   });
@@ -43,13 +43,13 @@ describe("normalizeRequest", () => {
   it("rejects a system message given twice", async () => {
     expect(
       await codeOf(() =>
-        normalizeRequest({ messages: [{ role: "system", content: "a" }], system: "b" }),
+        normalizeRequest({ messages: [{ content: "a", role: "system" }], system: "b" }),
       ),
     ).toBe("INVALID_OPTIONS");
   });
 
   it("validates numeric options", async () => {
-    expect(await codeOf(() => normalizeRequest({ prompt: "x", maxTokens: 0 }))).toBe(
+    expect(await codeOf(() => normalizeRequest({ maxTokens: 0, prompt: "x" }))).toBe(
       "INVALID_OPTIONS",
     );
     expect(await codeOf(() => normalizeRequest({ prompt: "x", temperature: 5 }))).toBe(
@@ -64,12 +64,12 @@ describe("normalizeRequest", () => {
 
 describe("fitToBudget", () => {
   const convo: Message[] = [
-    { role: "system", content: "sys one" },
-    { role: "user", content: "first question here" },
-    { role: "assistant", content: "first answer here" },
-    { role: "user", content: "second question here" },
-    { role: "assistant", content: "second answer here" },
-    { role: "user", content: "final question" },
+    { content: "sys one", role: "system" },
+    { content: "first question here", role: "user" },
+    { content: "first answer here", role: "assistant" },
+    { content: "second question here", role: "user" },
+    { content: "second answer here", role: "assistant" },
+    { content: "final question", role: "user" },
   ];
 
   it("returns the messages unchanged when they fit", async () => {

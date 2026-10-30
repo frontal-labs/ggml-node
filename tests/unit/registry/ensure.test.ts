@@ -20,7 +20,7 @@ describe("ensureModel and ensureEntry", () => {
   afterEach(async () => {
     await server?.close();
     server = undefined;
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { force: true, recursive: true });
     vi.restoreAllMocks();
   });
 
@@ -30,11 +30,11 @@ describe("ensureModel and ensureEntry", () => {
     });
 
     const err = await ensureModel("qwen2.5-0.5b", {
-      cacheDir: dir,
-      allowDownload: false,
-      offline: true,
       acceptLicense: false,
+      allowDownload: false,
+      cacheDir: dir,
       fetch: fetchSpy as unknown as typeof fetch,
+      offline: true,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -47,10 +47,10 @@ describe("ensureModel and ensureEntry", () => {
 
   it("points to pull when autoDownload is off and the model is missing", async () => {
     const err = await ensureModel("qwen2.5-0.5b", {
-      cacheDir: dir,
-      allowDownload: false,
-      offline: false,
       acceptLicense: false,
+      allowDownload: false,
+      cacheDir: dir,
+      offline: false,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -67,11 +67,11 @@ describe("ensureModel and ensureEntry", () => {
     const fetchSpy = vi.fn();
 
     const result = await ensureModel("qwen2.5-0.5b", {
-      cacheDir: dir,
-      allowDownload: true,
-      offline: false,
       acceptLicense: false,
+      allowDownload: true,
+      cacheDir: dir,
       fetch: fetchSpy as unknown as typeof fetch,
+      offline: false,
     });
 
     expect(result).toBe(path);
@@ -83,19 +83,19 @@ describe("ensureModel and ensureEntry", () => {
     server = await startFixtureServer(body);
     const entry = {
       ...MODELS["qwen2.5-0.5b"],
+      file: "gated.gguf",
       license: "llama3.2",
       licenseUrl: "https://example.test/LICENSE",
-      url: server.url,
       sha256: createHash("sha256").update(body).digest("hex"),
       sizeBytes: body.length,
-      file: "gated.gguf",
+      url: server.url,
     };
 
     const err = await ensureEntry(entry, {
-      cacheDir: dir,
-      allowDownload: true,
-      offline: false,
       acceptLicense: false,
+      allowDownload: true,
+      cacheDir: dir,
+      offline: false,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -105,10 +105,10 @@ describe("ensureModel and ensureEntry", () => {
     expect(server.requests).toHaveLength(0);
 
     const path = await ensureEntry(entry, {
-      cacheDir: dir,
-      allowDownload: true,
-      offline: false,
       acceptLicense: true,
+      allowDownload: true,
+      cacheDir: dir,
+      offline: false,
     });
     expect(path).toBe(join(dir, "gated.gguf"));
   });
@@ -118,32 +118,32 @@ describe("ensureModel and ensureEntry", () => {
     server = await startFixtureServer(body);
     const events: InboardEvent[] = [];
     const entry = {
-      id: "qwen2.5-0.5b" as ModelId,
       file: "events.gguf",
-      url: server.url,
-      sha256: createHash("sha256").update(body).digest("hex"),
-      sizeBytes: body.length,
+      id: "qwen2.5-0.5b" as ModelId,
       license: "Apache-2.0",
       licenseUrl: "https://www.apache.org/licenses/LICENSE-2.0",
+      sha256: createHash("sha256").update(body).digest("hex"),
+      sizeBytes: body.length,
+      url: server.url,
     };
 
     await ensureEntry(entry, {
-      cacheDir: dir,
-      allowDownload: true,
-      offline: false,
       acceptLicense: false,
+      allowDownload: true,
+      cacheDir: dir,
+      offline: false,
       onEvent: (e) => events.push(e),
     });
 
     expect(events[0]).toEqual({
-      type: "download:start",
       model: "qwen2.5-0.5b",
       totalBytes: body.length,
+      type: "download:start",
     });
     expect(events.at(-1)).toEqual({
-      type: "download:done",
       model: "qwen2.5-0.5b",
       path: join(dir, "events.gguf"),
+      type: "download:done",
     });
     expect(events.some((e) => e.type === "download:progress")).toBe(true);
   });
@@ -156,15 +156,15 @@ describe("ensureModel and ensureEntry", () => {
 
     await ensureEntry(
       {
-        id: "smollm2-360m",
         file: "stale.gguf",
-        url: server.url,
-        sha256: createHash("sha256").update(body).digest("hex"),
-        sizeBytes: body.length,
+        id: "smollm2-360m",
         license: "Apache-2.0",
         licenseUrl: "https://www.apache.org/licenses/LICENSE-2.0",
+        sha256: createHash("sha256").update(body).digest("hex"),
+        sizeBytes: body.length,
+        url: server.url,
       },
-      { cacheDir: dir, allowDownload: true, offline: false, acceptLicense: false },
+      { acceptLicense: false, allowDownload: true, cacheDir: dir, offline: false },
     );
 
     expect(Buffer.compare(await readFile(dest), body)).toBe(0);

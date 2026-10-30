@@ -5,8 +5,8 @@ describe("InboardError", () => {
   it("carries code, hint and cause", () => {
     const cause = new Error("disk full");
     const err = new InboardError("DOWNLOAD_FAILED", "download failed", {
-      hint: "Run: npx inboard pull qwen2.5-0.5b",
       cause,
+      hint: "Run: npx inboard pull qwen2.5-0.5b",
     });
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe("InboardError");

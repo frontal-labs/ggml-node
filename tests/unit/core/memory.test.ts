@@ -21,33 +21,33 @@ describe("memory estimates", () => {
 
   it("uses the cgroup headroom when it is smaller than free memory", async () => {
     const readers = {
-      availableSystemBytes: async () => 8_000,
-      cgroupLimitBytes: async () => 5_000,
-      cgroupCurrentBytes: async () => 1_000,
+      availableSystemBytes: async () => 8000,
+      cgroupCurrentBytes: async () => 1000,
+      cgroupLimitBytes: async () => 5000,
     };
-    expect(await availableMemoryBytes(readers)).toBe(4_000);
+    expect(await availableMemoryBytes(readers)).toBe(4000);
   });
 
   it("uses free memory when there is no cgroup limit", async () => {
     const readers = {
-      availableSystemBytes: async () => 8_000,
-      cgroupLimitBytes: async () => undefined,
+      availableSystemBytes: async () => 8000,
       cgroupCurrentBytes: async () => undefined,
+      cgroupLimitBytes: async () => undefined,
     };
-    expect(await availableMemoryBytes(readers)).toBe(8_000);
+    expect(await availableMemoryBytes(readers)).toBe(8000);
   });
 
   it("throws OUT_OF_MEMORY with a hint when the estimate does not fit", async () => {
     const readers = {
       availableSystemBytes: async () => 1000,
-      cgroupLimitBytes: async () => undefined,
       cgroupCurrentBytes: async () => undefined,
+      cgroupLimitBytes: async () => undefined,
     };
     const err = await preflight({
-      estimateBytes: 5000,
       contextSize: 4096,
-      sequences: 2,
+      estimateBytes: 5000,
       readers,
+      sequences: 2,
     }).then(
       () => undefined,
       (e: unknown) => e,
@@ -59,11 +59,11 @@ describe("memory estimates", () => {
   it("passes when the estimate fits", async () => {
     const readers = {
       availableSystemBytes: async () => 10_000,
-      cgroupLimitBytes: async () => undefined,
       cgroupCurrentBytes: async () => undefined,
+      cgroupLimitBytes: async () => undefined,
     };
     await expect(
-      preflight({ estimateBytes: 5000, contextSize: 4096, sequences: 1, readers }),
+      preflight({ contextSize: 4096, estimateBytes: 5000, readers, sequences: 1 }),
     ).resolves.toBeUndefined();
   });
 });

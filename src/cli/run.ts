@@ -10,15 +10,15 @@ import { MODEL_IDS, MODELS, type ModelId } from "@/registry/models.js";
 import { VERSION } from "@/version.js";
 
 /** Exit codes from PLAN section 3.6. */
-export const EXIT = { OK: 0, USER_ERROR: 1, ENVIRONMENT_ERROR: 2 } as const;
+export const EXIT = { ENVIRONMENT_ERROR: 2, OK: 0, USER_ERROR: 1 } as const;
 
 export interface CliIO {
-  stdout(text: string): void;
-  stderr(text: string): void;
-  /** Whether stderr is a terminal. Progress lines are only drawn when it is. */
-  stderrIsTTY?: boolean;
   env?: InboardEnv;
   fetch?: typeof fetch;
+  stderr: (text: string) => void;
+  /** Whether stderr is a terminal. Progress lines are only drawn when it is. */
+  stderrIsTTY?: boolean;
+  stdout: (text: string) => void;
 }
 
 /** Runs one CLI command and returns its exit code. Never throws. */
@@ -45,8 +45,8 @@ export function createProgram(io: CliIO, env: InboardEnv = defaultEnv): Command 
     .version(VERSION, "-v, --version")
     .exitOverride()
     .configureOutput({
-      writeOut: (text) => io.stdout(text),
       writeErr: (text) => io.stderr(text),
+      writeOut: (text) => io.stdout(text),
     });
 
   const modelArgument = new Argument("<modelId>", "registry model id").choices(MODEL_IDS);
@@ -130,18 +130,22 @@ async function pull(
   );
   const drawProgress = io.stderrIsTTY === true;
   await downloadFile({
-    url: entry.url,
+    destPath: path,
     sha256: entry.sha256,
     sizeBytes: entry.sizeBytes,
-    destPath: path,
+    url: entry.url,
     ...(io.fetch ? { fetch: io.fetch } : {}),
     onProgress: (received, total) => {
-      if (!drawProgress) return;
+      if (!drawProgress) {
+        return;
+      }
       const pct = total === 0 ? 0 : Math.floor((received / total) * 100);
       io.stderr(`\r  ${formatBytes(received)} / ${formatBytes(total)} (${pct}%)`);
     },
   });
-  if (drawProgress) io.stderr("\n");
+  if (drawProgress) {
+    io.stderr("\n");
+  }
   io.stdout(`${path}\n`);
 }
 
@@ -151,14 +155,14 @@ async function list(json: boolean, io: CliIO, env: InboardEnv): Promise<void> {
     MODEL_IDS.map(async (id) => {
       const entry = MODELS[id];
       return {
-        id,
-        displayName: entry.displayName,
-        sizeBytes: entry.sizeBytes,
+        cached: await isModelPresent(entry, dir),
         contextLength: entry.contextLength,
+        displayName: entry.displayName,
+        id,
         license: entry.license,
         licenseUrl: entry.licenseUrl,
-        cached: await isModelPresent(entry, dir),
         path: modelFilePath(entry, dir),
+        sizeBytes: entry.sizeBytes,
       };
     }),
   );
@@ -181,19 +185,27 @@ async function list(json: boolean, io: CliIO, env: InboardEnv): Promise<void> {
 async function clearCache(modelId: ModelId | undefined, io: CliIO, env: InboardEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
   const targets: readonly ModelId[] = modelId ? [modelId] : MODEL_IDS;
-  for (const id of targets) {
-    const path = modelFilePath(MODELS[id], dir);
-    // Only the registry's own file names are touched, along with their partial and lock files.
-    for (const file of [path, `${path}.partial`, `${path}.lock`]) {
-      await rm(file, { force: true });
-    }
-    io.stdout(`cleared ${id}\n`);
-  }
+  // Only the registry's own file names are touched, along with their partial and lock files.
+  await Promise.all(
+    targets.map(async (id) => {
+      const path = modelFilePath(MODELS[id], dir);
+      await Promise.all(
+        [path, `${path}.partial`, `${path}.lock`].map((file) => rm(file, { force: true })),
+      );
+      io.stdout(`cleared ${id}\n`);
+    }),
+  );
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
-  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(1)} KB`;
+  if (bytes >= 1e9) {
+    return `${(bytes / 1e9).toFixed(2)} GB`;
+  }
+  if (bytes >= 1e6) {
+    return `${(bytes / 1e6).toFixed(1)} MB`;
+  }
+  if (bytes >= 1e3) {
+    return `${(bytes / 1e3).toFixed(1)} KB`;
+  }
   return `${bytes} B`;
 }

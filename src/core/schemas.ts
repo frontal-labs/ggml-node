@@ -17,38 +17,38 @@ const eventListener = z.custom<(event: InboardEvent) => void>(
 );
 
 export const inboardOptionsSchema = z.object({
-  model: modelSourceSchema,
+  acceptLicense: z.boolean().optional(),
+  autoDownload: z.boolean().optional(),
+  cacheDir: z.string().min(1).optional(),
   contextSize: z.number().int().positive().optional(),
-  maxConcurrency: z.number().int().min(1).optional(),
-  maxQueue: z.number().int().min(0).optional(),
-  threads: z.union([z.number().int().min(1), z.literal("auto")]).optional(),
   gpu: z.union([z.literal("auto"), z.literal(false)]).optional(),
   isolation: z.enum(["none", "process"]).optional(),
-  cacheDir: z.string().min(1).optional(),
+  maxConcurrency: z.number().int().min(1).optional(),
+  maxQueue: z.number().int().min(0).optional(),
+  model: modelSourceSchema,
   offline: z.boolean().optional(),
-  autoDownload: z.boolean().optional(),
-  acceptLicense: z.boolean().optional(),
   onEvent: eventListener.optional(),
+  threads: z.union([z.number().int().min(1), z.literal("auto")]).optional(),
 });
 
 export const messageSchema = z.discriminatedUnion("role", [
-  z.object({ role: z.literal("system"), content: z.string() }),
-  z.object({ role: z.literal("user"), content: z.string() }),
-  z.object({ role: z.literal("assistant"), content: z.string() }),
+  z.object({ content: z.string(), role: z.literal("system") }),
+  z.object({ content: z.string(), role: z.literal("user") }),
+  z.object({ content: z.string(), role: z.literal("assistant") }),
 ]);
 
 export const generateOptionsSchema = z.object({
-  prompt: z.string().optional(),
-  messages: z.array(messageSchema).optional(),
-  system: z.string().optional(),
   maxTokens: z.number().int().min(1).optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  topP: z.number().gt(0).max(1).optional(),
-  topK: z.number().int().min(0).optional(),
-  seed: z.number().int().min(0).optional(),
-  stop: z.array(z.string().min(1)).optional(),
+  messages: z.array(messageSchema).optional(),
   overflow: z.enum(["error", "truncate-start", "truncate-middle"]).optional(),
+  prompt: z.string().optional(),
+  seed: z.number().int().min(0).optional(),
   signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal).optional(),
+  stop: z.array(z.string().min(1)).optional(),
+  system: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  topK: z.number().int().min(0).optional(),
+  topP: z.number().gt(0).max(1).optional(),
 });
 
 /** `pull` and `list` flags, as the CLI parses them. */
@@ -67,7 +67,7 @@ export type ListOptions = z.infer<typeof listOptionsSchema>;
 
 /** First issue as a readable sentence, for `INVALID_OPTIONS` messages. */
 export function firstIssue(error: z.ZodError): { path: string; message: string } {
-  const issue = error.issues[0];
+  const [issue] = error.issues;
   const path = issue?.path.map(String).join(".") ?? "";
-  return { path: path || "options", message: issue?.message ?? "invalid value" };
+  return { message: issue?.message ?? "invalid value", path: path || "options" };
 }

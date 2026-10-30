@@ -18,14 +18,15 @@ import { MODEL_SOURCES, type RegistrySource } from "@/registry/sources.js";
 
 const OUTPUT = join(import.meta.dirname, "..", "src", "registry", "models.ts");
 const keep = process.argv.includes("--keep");
+const ETAG_PATTERN = /^[0-9a-f]{64}$/u;
 
 interface Computed {
-  source: RegistrySource;
-  url: string;
+  architecture: string;
+  contextLength: number;
   sha256: string;
   sizeBytes: number;
-  contextLength: number;
-  architecture: string;
+  source: RegistrySource;
+  url: string;
 }
 
 function urlFor(source: RegistrySource): string {
@@ -46,7 +47,7 @@ async function lfsMetadata(url: string): Promise<LfsMetadata> {
   const res = await fetch(url, { method: "HEAD", redirect: "manual" });
   const etag = res.headers.get("x-linked-etag")?.replaceAll('"', "").toLowerCase();
   const size = Number(res.headers.get("x-linked-size"));
-  if (!etag || !/^[0-9a-f]{64}$/.test(etag) || !Number.isFinite(size) || size <= 0) {
+  if (!(etag && ETAG_PATTERN.test(etag) && Number.isFinite(size)) || size <= 0) {
     throw new Error(`${url} has no usable x-linked-etag / x-linked-size headers`);
   }
   return { sha256: etag, sizeBytes: size };
@@ -64,22 +65,30 @@ async function downloadVerified(
   meta: LfsMetadata,
   id: string,
 ): Promise<void> {
-  for (let attempt = 1; ; attempt++) {
+  for (let attempt = 1; ; attempt += 1) {
     try {
+      // Retries run one at a time, so the attempt order and the progress output stay readable.
+      // biome-ignore lint/performance/noAwaitInLoops: sequential by design
       await downloadFile({
-        url,
-        sha256: meta.sha256,
-        sizeBytes: meta.sizeBytes,
         destPath: dest,
         onProgress: (received, total) => {
-          if (process.stdout.isTTY) process.stdout.write(`\r[${id}] ${received} / ${total}`);
+          if (process.stdout.isTTY) {
+            process.stdout.write(`\r[${id}] ${received} / ${total}`);
+          }
         },
+        sha256: meta.sha256,
+        sizeBytes: meta.sizeBytes,
+        url,
       });
-      if (process.stdout.isTTY) process.stdout.write("\n");
+      if (process.stdout.isTTY) {
+        process.stdout.write("\n");
+      }
       return;
     } catch (err) {
       const retryable = isInboardError(err) && err.code === "DOWNLOAD_FAILED";
-      if (!retryable || attempt >= MAX_ATTEMPTS) throw err;
+      if (!retryable || attempt >= MAX_ATTEMPTS) {
+        throw err;
+      }
       console.warn(`[${id}] attempt ${attempt} dropped (${err.message}); resuming`);
       await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
@@ -95,7 +104,7 @@ async function computeOne(source: RegistrySource, dir: string): Promise<Computed
   await downloadVerified(url, dest, meta, source.id);
 
   const info = await readGgufFileInfo(dest, { readTensorInfo: false });
-  const architecture = info.metadata.general.architecture;
+  const { architecture } = info.metadata.general;
   if (typeof architecture !== "string") {
     throw new Error(`[${source.id}] GGUF has no general.architecture`);
   }
@@ -114,12 +123,12 @@ async function computeOne(source: RegistrySource, dir: string): Promise<Computed
 
   console.log(`[${source.id}] sha256=${meta.sha256} size=${meta.sizeBytes} ctx=${contextLength}`);
   return {
-    source,
-    url,
+    architecture,
+    contextLength,
     sha256: meta.sha256,
     sizeBytes: meta.sizeBytes,
-    contextLength,
-    architecture,
+    source,
+    url,
   };
 }
 
@@ -164,6 +173,7 @@ async function main(): Promise<void> {
 
   const computed: Computed[] = [];
   for (const source of MODEL_SOURCES) {
+    // biome-ignore lint/performance/noAwaitInLoops: one model at a time keeps disk use low
     computed.push(await computeOne(source, dir));
   }
   await writeFile(OUTPUT, render(computed));

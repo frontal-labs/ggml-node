@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
 import { createHash, type Hash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
@@ -5,17 +6,17 @@ import { dirname, resolve } from "node:path";
 import { InboardError } from "@/core/errors.js";
 
 export interface DownloadOptions {
-  url: string;
-  /** Expected lowercase hex SHA-256 of the complete file. */
-  sha256: string;
-  /** Expected size of the complete file in bytes. */
-  sizeBytes: number;
   /** Final path. The download is written to `${destPath}.partial` first. */
   destPath: string;
-  signal?: AbortSignal | undefined;
   /** Defaults to the global `fetch`. Injected by tests. */
   fetch?: typeof fetch | undefined;
   onProgress?: ((receivedBytes: number, totalBytes: number) => void) | undefined;
+  /** Expected lowercase hex SHA-256 of the complete file. */
+  sha256: string;
+  signal?: AbortSignal | undefined;
+  /** Expected size of the complete file in bytes. */
+  sizeBytes: number;
+  url: string;
 }
 
 const PROGRESS_INTERVAL_MS = 100;
@@ -36,7 +37,9 @@ const inflight = new Map<string, Promise<string>>();
 export function downloadFile(options: DownloadOptions): Promise<string> {
   const key = resolve(options.destPath);
   const running = inflight.get(key);
-  if (running) return running;
+  if (running) {
+    return running;
+  }
 
   const task = runExclusive(options).finally(() => inflight.delete(key));
   inflight.set(key, task);
@@ -55,7 +58,9 @@ async function runExclusive(options: DownloadOptions): Promise<string> {
   await mkdir(dirname(destPath), { recursive: true });
 
   const lock = await acquireLock(destPath, sizeBytes);
-  if (lock === "already-downloaded") return destPath;
+  if (lock === "already-downloaded") {
+    return destPath;
+  }
 
   try {
     await fetchAndVerify(options);
@@ -81,15 +86,15 @@ async function fetchAndVerify(options: DownloadOptions): Promise<void> {
   if (offset < sizeBytes) {
     const result = await streamInto({
       fetchFn,
-      url,
-      partial,
       offset,
-      sizeBytes,
-      signal,
       onProgress,
+      partial,
+      signal,
+      sizeBytes,
+      url,
     });
     offset = result.received;
-    hash = result.hash;
+    ({ hash } = result);
   } else {
     // The partial file is already the full size. Hash it and let verification decide.
     hash = createHash("sha256");
@@ -116,18 +121,18 @@ async function fetchAndVerify(options: DownloadOptions): Promise<void> {
 
 interface StreamArgs {
   fetchFn: typeof fetch;
-  url: string;
-  partial: string;
   offset: number;
-  sizeBytes: number;
-  signal: AbortSignal | undefined;
   onProgress: ((receivedBytes: number, totalBytes: number) => void) | undefined;
+  partial: string;
+  signal: AbortSignal | undefined;
+  sizeBytes: number;
+  url: string;
 }
 
 interface StreamResult {
-  received: number;
   /** Hash over every byte in the partial file, including bytes from earlier attempts. */
   hash: Hash;
+  received: number;
 }
 
 /**
@@ -146,13 +151,13 @@ async function streamInto(args: StreamArgs): Promise<StreamResult> {
     await rm(partial, { force: true });
     return streamInto({ ...args, offset: 0 });
   }
-  if (!response.ok || !response.body) {
+  if (!(response.ok && response.body)) {
     throw new InboardError("DOWNLOAD_FAILED", `HTTP ${response.status} while downloading ${url}`, {
       hint: "Check the network connection, and that the model URL in the registry still resolves.",
     });
   }
 
-  let offset = args.offset;
+  let { offset } = args;
   const hash = createHash("sha256");
   if (offset > 0 && response.status === 206) {
     await hashFileInto(partial, hash);
@@ -179,18 +184,18 @@ async function streamInto(args: StreamArgs): Promise<StreamResult> {
     await handle.close();
     if (signal?.aborted) {
       throw new InboardError("ABORTED", "Download was aborted", {
-        hint: "Run the same command again to resume.",
         cause: err,
+        hint: "Run the same command again to resume.",
       });
     }
     throw new InboardError("DOWNLOAD_FAILED", `Connection lost while downloading ${url}`, {
-      hint: "Run the same command again. The partial file is kept, so the download resumes.",
       cause: err,
+      hint: "Run the same command again. The partial file is kept, so the download resumes.",
     });
   }
   await handle.close();
   onProgress?.(received, sizeBytes);
-  return { received, hash };
+  return { hash, received };
 }
 
 async function request(
@@ -204,13 +209,13 @@ async function request(
   } catch (err) {
     if (signal?.aborted) {
       throw new InboardError("ABORTED", "Download was aborted", {
-        hint: "Run the same command again to resume.",
         cause: err,
+        hint: "Run the same command again to resume.",
       });
     }
     throw new InboardError("DOWNLOAD_FAILED", `Could not reach ${url}`, {
-      hint: "Check the network connection. For an air-gapped machine, pull the model elsewhere and copy it into the cache dir.",
       cause: err,
+      hint: "Check the network connection. For an air-gapped machine, pull the model elsewhere and copy it into the cache dir.",
     });
   }
 }
@@ -233,7 +238,7 @@ function hashFileInto(path: string, hash: Hash): Promise<void> {
 }
 
 interface Lock {
-  release(): Promise<void>;
+  release: () => Promise<void>;
 }
 
 /**
@@ -247,12 +252,15 @@ async function acquireLock(
   const lockPath = `${destPath}.lock`;
   for (;;) {
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: lock attempts are sequential by nature
       const handle = await open(lockPath, "wx");
       await handle.writeFile(JSON.stringify({ pid: process.pid, startedAt: Date.now() }));
       await handle.close();
       return { release: () => rm(lockPath, { force: true }) };
     } catch (err) {
-      if (!isErrno(err, "EEXIST")) throw err;
+      if (!isErrno(err, "EEXIST")) {
+        throw err;
+      }
     }
 
     if (await isStaleLock(lockPath)) {
@@ -260,7 +268,9 @@ async function acquireLock(
       continue;
     }
 
-    if ((await sizeOf(destPath)) === sizeBytes) return "already-downloaded";
+    if ((await sizeOf(destPath)) === sizeBytes) {
+      return "already-downloaded";
+    }
     await sleep(LOCK_POLL_MS);
   }
 }
@@ -269,8 +279,10 @@ async function isStaleLock(lockPath: string): Promise<boolean> {
   let pid: number;
   try {
     const parsed = JSON.parse(await readFile(lockPath, "utf8")) as { pid?: unknown };
-    if (typeof parsed.pid !== "number") return true;
-    pid = parsed.pid;
+    if (typeof parsed.pid !== "number") {
+      return true;
+    }
+    ({ pid } = parsed);
   } catch {
     // Unreadable or half-written. Treat it as stale only once it has existed for a while.
     return ageMs(lockPath).then(
