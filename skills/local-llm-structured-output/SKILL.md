@@ -1,9 +1,9 @@
 ---
-name: inboard-structured-output
-description: Get a typed object from a local inboard-sdk model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
+name: local-llm-structured-output
+description: Get a typed object from a local local-llm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
 ---
 
-# inboard-structured-output
+# local-llm-structured-output
 
 `object()` generates JSON under a grammar, so the shape is guaranteed. The values still come from the model, so validate what matters.
 

@@ -1,5 +1,5 @@
 import type { BackendLoadOptions, BackendRequest } from "@/backend/types.js";
-import type { InboardErrorCode } from "@/core/errors.js";
+import type { LocalLLMErrorCode } from "@/core/errors.js";
 import type { JsonSchemaObject, Message } from "@/core/types.js";
 
 /**
@@ -29,7 +29,7 @@ export type HostMessage =
   | { type: "unload"; id: RequestId };
 
 export interface WireError {
-  code: InboardErrorCode;
+  code: LocalLLMErrorCode;
   hint: string;
   message: string;
 }

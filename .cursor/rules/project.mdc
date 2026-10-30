@@ -1,15 +1,15 @@
 ---
-description: What inboard-sdk is and how this repo is organised
+description: What local-llm is and how this repo is organised
 alwaysApply: true
 ---
 
-# inboard-sdk
+# local-llm
 
 An LLM inside the Node process. No daemon, no API key, no port.
 
-- Public entry points: `inboard-sdk` (core), `inboard-sdk/ai` (AI SDK provider), `inboard-sdk/testing` (mocks).
-- Source lives in `src/`. Import it with the `@/` alias (`@/core/inboard.js`), never with `../`.
-- Tests live in `tests/`: `tests/unit` (no network, no real model) and `tests/e2e` (opt-in with `INBOARD_E2E=1`).
+- Public entry points: `local-llm` (core), `local-llm/ai` (AI SDK provider), `local-llm/testing` (mocks).
+- Source lives in `src/`. Import it with the `@/` alias (`@/core/local-llm.js`), never with `../`.
+- Tests live in `tests/`: `tests/unit` (no network, no real model) and `tests/e2e` (opt-in with `LOCAL_LLM_E2E=1`).
 - Read `process.env` only through `src/env.ts`.
 - Runtime is Node 20+ for the published package. Development uses Bun (`bun run verify`).
 - `PLAN.md` is the source of the milestones. `DECISIONS.md` records every deviation from it.

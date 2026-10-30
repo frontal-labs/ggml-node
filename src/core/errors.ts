@@ -1,4 +1,4 @@
-export const INBOARD_ERROR_CODES = [
+export const LOCAL_LLM_ERROR_CODES = [
   "MODEL_NOT_FOUND",
   "DOWNLOAD_FAILED",
   "CHECKSUM_MISMATCH",
@@ -13,21 +13,21 @@ export const INBOARD_ERROR_CODES = [
   "BACKEND_CRASHED",
 ] as const;
 
-export type InboardErrorCode = (typeof INBOARD_ERROR_CODES)[number];
+export type LocalLLMErrorCode = (typeof LOCAL_LLM_ERROR_CODES)[number];
 
-export interface InboardErrorOptions {
+export interface LocalLLMErrorOptions {
   cause?: unknown;
-  /** Actionable next step, e.g. "Run: npx inboard pull qwen2.5-0.5b". Must be non-empty. */
+  /** Actionable next step, e.g. "Run: npx local-llm pull qwen2.5-0.5b". Must be non-empty. */
   hint: string;
 }
 
-export class InboardError extends Error {
-  override readonly name = "InboardError";
-  readonly code: InboardErrorCode;
+export class LocalLLMError extends Error {
+  override readonly name = "LocalLLMError";
+  readonly code: LocalLLMErrorCode;
   readonly hint: string;
   override readonly cause: unknown;
 
-  constructor(code: InboardErrorCode, message: string, options: InboardErrorOptions) {
+  constructor(code: LocalLLMErrorCode, message: string, options: LocalLLMErrorOptions) {
     super(message);
     this.code = code;
     this.hint = options.hint;
@@ -35,6 +35,6 @@ export class InboardError extends Error {
   }
 }
 
-export function isInboardError(e: unknown): e is InboardError {
-  return e instanceof InboardError;
+export function isLocalLLMError(e: unknown): e is LocalLLMError {
+  return e instanceof LocalLLMError;
 }

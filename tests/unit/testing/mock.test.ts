@@ -1,25 +1,25 @@
 import { generateObject, generateText, streamText } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMockInboard, mockModel } from "@/testing/index.js";
+import { createMockLocalLLM, mockModel } from "@/testing/index.js";
 
-describe("createMockInboard", () => {
+describe("createMockLocalLLM", () => {
   it("echoes the last user message by default", async () => {
-    const ai = createMockInboard();
+    const ai = createMockLocalLLM();
     const r = await ai.generate({ prompt: "hello there" });
     expect(r.text).toBe("echo: hello there");
     expect(r.finishReason).toBe("stop");
   });
 
   it("plays a list of replies in order and cycles", async () => {
-    const ai = createMockInboard({ respond: ["one", "two"] });
+    const ai = createMockLocalLLM({ respond: ["one", "two"] });
     expect((await ai.generate({ prompt: "x" })).text).toBe("one");
     expect((await ai.generate({ prompt: "x" })).text).toBe("two");
     expect((await ai.generate({ prompt: "x" })).text).toBe("one");
   });
 
   it("calls a responder function with the request messages", async () => {
-    const ai = createMockInboard({ respond: ({ messages }) => `${messages.length} messages` });
+    const ai = createMockLocalLLM({ respond: ({ messages }) => `${messages.length} messages` });
     const r = await ai.generate({
       messages: [
         { content: "s", role: "system" },
@@ -30,7 +30,7 @@ describe("createMockInboard", () => {
   });
 
   it("streams in chunks of tokensPerChunk words", async () => {
-    const ai = createMockInboard({ respond: "a b c d e", tokensPerChunk: 2 });
+    const ai = createMockLocalLLM({ respond: "a b c d e", tokensPerChunk: 2 });
     const s = ai.stream({ prompt: "x" });
     const pieces: string[] = [];
     for await (const piece of s.textStream) {
@@ -41,13 +41,13 @@ describe("createMockInboard", () => {
   });
 
   it("object() parses the reply as JSON and checks it with the schema", async () => {
-    const ai = createMockInboard({ respond: '{"label":"spam"}' });
+    const ai = createMockLocalLLM({ respond: '{"label":"spam"}' });
     const r = await ai.object({ prompt: "x", schema: z.object({ label: z.string() }) });
     expect(r.object).toEqual({ label: "spam" });
   });
 
   it("reports the same info shape as the real backend", async () => {
-    const ai = createMockInboard({ respond: "x" });
+    const ai = createMockLocalLLM({ respond: "x" });
     const info = await ai.ready();
     expect(info).toMatchObject({ backend: "llama-cpp", id: "custom", license: "unknown" });
     await ai.unload();

@@ -1,10 +1,10 @@
 /**
  * The core API: generate, stream, and unload. Run from the repo root:
- *   bun run build && bun --filter '@inboard/example-basic' start
+ *   bun run build && bun --filter '@local-llm/example-basic' start
  */
-import { createInboard } from "inboard-sdk";
+import { createLocalLLM } from "local-llm";
 
-const ai = createInboard({ model: "qwen2.5-0.5b" });
+const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
 
 const info = await ai.ready();
 console.log(

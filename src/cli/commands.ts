@@ -2,16 +2,16 @@ import { readFile } from "node:fs/promises";
 import { arch, cpus, platform, release, totalmem } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { isInboardError } from "@/core/errors.js";
+import { isLocalLLMError } from "@/core/errors.js";
 import { nodeMemoryReaders, readAvailableSystemBytes } from "@/core/memory.js";
-import type { GenerateResult, Inboard, InboardOptions, ModelInfo } from "@/core/types.js";
-import { env as defaultEnv, type InboardEnv } from "@/env.js";
+import type { GenerateResult, LocalLLM, LocalLLMOptions, ModelInfo } from "@/core/types.js";
+import { env as defaultEnv, type LocalLLMEnv } from "@/env.js";
 import { resolveCacheDir } from "@/registry/cache.js";
 import { isModelPresent } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
 
 /** Commands that run inference. They take an injectable factory, so tests use the mock backend. */
-export type InboardFactory = (options: InboardOptions) => Inboard;
+export type LocalLLMFactory = (options: LocalLLMOptions) => LocalLLM;
 
 export interface BenchResult {
   firstTokenMs: number;
@@ -35,7 +35,7 @@ export interface DoctorCheck {
 const BYTES_PER_GB = 1024 ** 3;
 const gb = (bytes: number) => (bytes / BYTES_PER_GB).toFixed(1);
 
-/** `inboard run`: one generation, or one structured object when a JSON Schema file is given. */
+/** `local-llm run`: one generation, or one structured object when a JSON Schema file is given. */
 export const runOptionsSchema = z.object({
   json: z.boolean().default(false),
   jsonSchema: z.string().min(1).optional(),
@@ -54,8 +54,8 @@ export interface RunOutput {
 export async function runPrompt(
   prompt: string,
   rawOptions: unknown,
-  factory: InboardFactory,
-  env: InboardEnv = defaultEnv,
+  factory: LocalLLMFactory,
+  env: LocalLLMEnv = defaultEnv,
 ): Promise<RunOutput> {
   const options = runOptionsSchema.parse(rawOptions);
   const model = options.model as ModelId;
@@ -88,12 +88,12 @@ export async function runPrompt(
   }
 }
 
-/** `inboard bench`: load time, first token, tokens per second, and peak resident memory. */
+/** `local-llm bench`: load time, first token, tokens per second, and peak resident memory. */
 export async function benchModel(
   modelId: ModelId,
   tokens: number,
-  factory: InboardFactory,
-  env: InboardEnv = defaultEnv,
+  factory: LocalLLMFactory,
+  env: LocalLLMEnv = defaultEnv,
 ): Promise<BenchResult> {
   const ai = factory({ model: modelId, ...cacheOption(env) });
   let peak = process.memoryUsage().rss;
@@ -126,10 +126,10 @@ export async function benchModel(
   }
 }
 
-/** `inboard doctor`: each check reports ok, warn or fail, and a failure says how to fix it. */
+/** `local-llm doctor`: each check reports ok, warn or fail, and a failure says how to fix it. */
 export async function doctor(
-  factory: InboardFactory,
-  env: InboardEnv = defaultEnv,
+  factory: LocalLLMFactory,
+  env: LocalLLMEnv = defaultEnv,
 ): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   checks.push({
@@ -161,7 +161,7 @@ export async function doctor(
     detail: cacheDir,
     fix: writable
       ? undefined
-      : "Make the directory writable, or set INBOARD_CACHE_DIR to a writable path.",
+      : "Make the directory writable, or set LOCAL_LLM_CACHE_DIR to a writable path.",
     name: "cache dir",
     status: writable ? "ok" : "fail",
   });
@@ -172,7 +172,7 @@ export async function doctor(
     detail: cached
       ? `${defaultEntry.displayName} is cached`
       : `${defaultEntry.displayName} is not cached`,
-    fix: cached ? undefined : "Run: npx inboard pull qwen2.5-0.5b",
+    fix: cached ? undefined : "Run: npx local-llm pull qwen2.5-0.5b",
     name: "default model",
     status: cached ? "ok" : "warn",
   });
@@ -191,7 +191,7 @@ export async function doctor(
     } catch (err) {
       checks.push({
         detail: describe(err),
-        fix: isInboardError(err) ? err.hint : "Run the command again with a fresh process.",
+        fix: isLocalLLMError(err) ? err.hint : "Run the command again with a fresh process.",
         name: "backend",
         status: "fail",
       });
@@ -204,7 +204,7 @@ export function doctorExitCode(checks: readonly DoctorCheck[]): number {
   return checks.some((c) => c.status === "fail") ? 2 : 0;
 }
 
-function cacheOption(env: InboardEnv): { cacheDir?: string } {
+function cacheOption(env: LocalLLMEnv): { cacheDir?: string } {
   const dir = resolveCacheDir({ env });
   return { cacheDir: dir };
 }
@@ -223,7 +223,7 @@ async function canWrite(dir: string): Promise<boolean> {
 }
 
 function describe(err: unknown): string {
-  if (isInboardError(err)) {
+  if (isLocalLLMError(err)) {
     return `${err.code}: ${err.message}`;
   }
   return err instanceof Error ? err.message : String(err);

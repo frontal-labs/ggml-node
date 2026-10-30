@@ -1,5 +1,5 @@
 {
-  "name": "inboard-sdk",
+  "name": "local-llm",
   "version": "0.1.0",
   "description": "An LLM inside your Node process. No daemon, no API key, no port.",
   "keywords": [
@@ -11,13 +11,13 @@
     "structured-output",
     "offline"
   ],
-  "homepage": "https://github.com/frontal-labs/inboard#readme",
+  "homepage": "https://github.com/frontal-labs/local-llm#readme",
   "bugs": {
-    "url": "https://github.com/frontal-labs/inboard/issues"
+    "url": "https://github.com/frontal-labs/local-llm/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/frontal-labs/inboard.git"
+    "url": "git+https://github.com/frontal-labs/local-llm.git"
   },
   "license": "Apache-2.0",
   "author": "Frontal Labs",
@@ -38,7 +38,7 @@
     }
   },
   "bin": {
-    "inboard": "./dist/cli/index.js"
+    "local-llm": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -59,7 +59,7 @@
     "release": "bun run verify && bun run release:publish",
     "release:publish": "changeset publish",
     "test": "vitest run tests/unit",
-    "test:e2e": "INBOARD_E2E=1 vitest run tests/e2e",
+    "test:e2e": "LOCAL_LLM_E2E=1 vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
     "ultracite:check": "bun run scripts/sync-ultracite.ts --check",
     "ultracite:sync": "bun run scripts/sync-ultracite.ts",

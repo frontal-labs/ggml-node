@@ -1,6 +1,6 @@
 # Changesets
 
-Every change that a user of `inboard-sdk` would notice gets a changeset.
+Every change that a user of `local-llm` would notice gets a changeset.
 
 ```sh
 bun run changeset        # pick patch, minor or major, and write a one-line summary

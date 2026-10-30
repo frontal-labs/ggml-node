@@ -1,4 +1,4 @@
-import { InboardError } from "@/core/errors.js";
+import { LocalLLMError } from "@/core/errors.js";
 
 export interface SchedulerOptions {
   /** Requests allowed to wait beyond the running ones. Overflow throws `QUEUE_FULL`. */
@@ -65,7 +65,7 @@ export class Scheduler {
 
     if (this.queue.length >= this.maxQueue) {
       return Promise.reject(
-        new InboardError("QUEUE_FULL", `Queue is full (${this.maxQueue} waiting requests)`, {
+        new LocalLLMError("QUEUE_FULL", `Queue is full (${this.maxQueue} waiting requests)`, {
           hint: "Retry later, or raise maxQueue or maxConcurrency.",
         }),
       );
@@ -125,8 +125,8 @@ export class Scheduler {
   }
 }
 
-export function abortedError(cause?: unknown): InboardError {
-  return new InboardError("ABORTED", "The request was aborted", {
+export function abortedError(cause?: unknown): LocalLLMError {
+  return new LocalLLMError("ABORTED", "The request was aborted", {
     cause,
     hint: "The signal fired. Call again if you still need the result.",
   });

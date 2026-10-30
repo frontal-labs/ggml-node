@@ -1,4 +1,4 @@
-import type { InboardError } from "@/core/errors.js";
+import type { LocalLLMError } from "@/core/errors.js";
 
 import type { ModelId as RegistryModelId } from "@/registry/models.js";
 
@@ -91,7 +91,7 @@ export interface ModelInfo {
   sizeBytes: number;
 }
 
-export type InboardEvent =
+export type LocalLLMEvent =
   | { type: "download:start"; model: ModelId; totalBytes: number }
   | { type: "download:progress"; model: ModelId; receivedBytes: number; totalBytes: number }
   | { type: "download:done"; model: ModelId; path: string }
@@ -100,16 +100,16 @@ export type InboardEvent =
   | { type: "request:queued"; id: string; queueLength: number }
   | { type: "request:start"; id: string }
   | { type: "request:done"; id: string; result: Omit<GenerateResult, "text"> }
-  | { type: "request:error"; id: string; error: InboardError };
+  | { type: "request:error"; id: string; error: LocalLLMError };
 
 export type ModelSource = ModelId | { path: string };
 
-export interface InboardOptions {
+export interface LocalLLMOptions {
   /** Required for models whose license is not Apache-2.0 or MIT. Default false. */
   acceptLicense?: boolean;
   /** Download lazily when the model is missing and not offline. Default true. */
   autoDownload?: boolean;
-  /** Default: env INBOARD_CACHE_DIR, else the OS cache dir + /inboard. */
+  /** Default: env LOCAL_LLM_CACHE_DIR, else the OS cache dir + /local-llm. */
   cacheDir?: string;
   /** Default: min(model.contextLength, 4096). */
   contextSize?: number;
@@ -123,14 +123,14 @@ export interface InboardOptions {
   maxQueue?: number;
   /** A registry model id, or `{ path }` for a custom GGUF file. */
   model: ModelSource;
-  /** Or env INBOARD_OFFLINE=1. Default false. */
+  /** Or env LOCAL_LLM_OFFLINE=1. Default false. */
   offline?: boolean;
-  onEvent?: (event: InboardEvent) => void;
+  onEvent?: (event: LocalLLMEvent) => void;
   /** Number of threads, or "auto". */
   threads?: number | "auto";
 }
 
-export interface Inboard {
+export interface LocalLLM {
   countTokens: (text: string) => Promise<number>;
   generate: (options: GenerateOptions) => Promise<GenerateResult>;
   info: () => ModelInfo | null;

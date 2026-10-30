@@ -1,8 +1,8 @@
-// A minimal HTTP server for the container. It needs the model cached in INBOARD_CACHE_DIR.
+// A minimal HTTP server for the container. It needs the model cached in LOCAL_LLM_CACHE_DIR.
 import { createServer } from "node:http";
-import { createInboard } from "inboard-sdk";
+import { createLocalLLM } from "local-llm";
 
-const ai = createInboard({ model: "qwen2.5-0.5b" });
+const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
 
 createServer(async (req, res) => {
   if (req.method !== "POST" || req.url !== "/generate") {

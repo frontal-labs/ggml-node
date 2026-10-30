@@ -1,5 +1,5 @@
 {
-  "appId": "com.example.inboard",
+  "appId": "com.example.local-llm",
   "asar": true,
   "asarUnpack": [
     "**/node_modules/node-llama-cpp/**",

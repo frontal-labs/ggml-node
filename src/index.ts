@@ -1,15 +1,15 @@
 // biome-ignore-all lint/performance/noBarrelFile: this file is the package's public entry point
-export type { InboardErrorCode, InboardErrorOptions } from "@/core/errors.js";
-export { INBOARD_ERROR_CODES, InboardError, isInboardError } from "@/core/errors.js";
-export { createInboard } from "@/core/inboard.js";
+export type { LocalLLMErrorCode, LocalLLMErrorOptions } from "@/core/errors.js";
+export { isLocalLLMError, LOCAL_LLM_ERROR_CODES, LocalLLMError } from "@/core/errors.js";
+export { createLocalLLM } from "@/core/local-llm.js";
 export type {
   FinishReason,
   GenerateOptions,
   GenerateResult,
-  Inboard,
-  InboardEvent,
-  InboardOptions,
   JsonSchemaObject,
+  LocalLLM,
+  LocalLLMEvent,
+  LocalLLMOptions,
   Message,
   ModelId,
   ModelInfo,

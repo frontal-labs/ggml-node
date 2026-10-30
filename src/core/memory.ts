@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { freemem } from "node:os";
 import { promisify } from "node:util";
-import { InboardError } from "@/core/errors.js";
+import { LocalLLMError } from "@/core/errors.js";
 
 /** The attention shape that determines KV-cache size. Read from the GGUF metadata. */
 export interface KvShape {
@@ -140,7 +140,7 @@ export async function preflight(input: PreflightInput): Promise<void> {
   if (input.estimateBytes <= available) {
     return;
   }
-  throw new InboardError(
+  throw new LocalLLMError(
     "OUT_OF_MEMORY",
     `Model needs about ${gib(input.estimateBytes)} GB but only ${gib(available)} GB is available`,
     {

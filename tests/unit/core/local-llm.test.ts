@@ -2,9 +2,9 @@ import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isInboardError } from "@/core/errors.js";
-import { createInboardWithDeps, type InboardDeps } from "@/core/inboard.js";
-import type { Inboard, InboardEvent, InboardOptions } from "@/core/types.js";
+import { isLocalLLMError } from "@/core/errors.js";
+import { createLocalLLMWithDeps, type LocalLLMDeps } from "@/core/local-llm.js";
+import type { LocalLLM, LocalLLMEvent, LocalLLMOptions } from "@/core/types.js";
 import { MODELS } from "@/registry/models.js";
 import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-backend.js";
 
@@ -13,17 +13,17 @@ const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };
 function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   return p.then(
     () => undefined,
-    (e: unknown) => (isInboardError(e) ? e.code : `NOT_INBOARD:${String(e)}`),
+    (e: unknown) => (isLocalLLMError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
   );
 }
 
-describe("createInboard", () => {
+describe("createLocalLLM", () => {
   let dir: string;
   let modelPath: string;
-  let events: InboardEvent[];
+  let events: LocalLLMEvent[];
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "inboard-core-"));
+    dir = await mkdtemp(join(tmpdir(), "local-llm-core-"));
     modelPath = join(dir, "custom.gguf");
     await writeFile(modelPath, Buffer.alloc(1000));
     events = [];
@@ -34,14 +34,14 @@ describe("createInboard", () => {
   });
 
   function make(
-    options: Partial<InboardOptions> & Pick<InboardOptions, "model">,
+    options: Partial<LocalLLMOptions> & Pick<LocalLLMOptions, "model">,
     backendOptions: FakeBackendOptions = {},
-    depsOverride: Partial<InboardDeps> = {},
+    depsOverride: Partial<LocalLLMDeps> = {},
   ) {
     const backend = createFakeBackend(backendOptions);
-    const deps: Partial<InboardDeps> = {
+    const deps: Partial<LocalLLMDeps> = {
       createBackend: () => backend,
-      env: { INBOARD_CACHE_DIR: dir },
+      env: { LOCAL_LLM_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
         cgroupCurrentBytes: async () => undefined,
@@ -50,8 +50,8 @@ describe("createInboard", () => {
       readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
       ...depsOverride,
     };
-    const ai: Inboard = createInboardWithDeps(
-      { onEvent: (e) => events.push(e), ...options } as InboardOptions,
+    const ai: LocalLLM = createLocalLLMWithDeps(
+      { onEvent: (e) => events.push(e), ...options } as LocalLLMOptions,
       deps,
     );
     return { ai, backend };
@@ -135,8 +135,8 @@ describe("createInboard", () => {
         () => undefined,
         (e: unknown) => e,
       );
-      expect(isInboardError(err) && err.code).toBe("BACKEND_CRASHED");
-      expect(isInboardError(err) && err.hint.length > 0).toBe(true);
+      expect(isLocalLLMError(err) && err.code).toBe("BACKEND_CRASHED");
+      expect(isLocalLLMError(err) && err.hint.length > 0).toBe(true);
       expect(events.some((e) => e.type === "request:error")).toBe(true);
     });
 
@@ -171,7 +171,7 @@ describe("createInboard", () => {
         })
         .catch((e: unknown) => e);
       // The last user message is never dropped, so this cannot fit and must fail.
-      expect(isInboardError(r) && r.code).toBe("CONTEXT_OVERFLOW");
+      expect(isLocalLLMError(r) && r.code).toBe("CONTEXT_OVERFLOW");
     });
   });
 
@@ -276,7 +276,7 @@ describe("createInboard", () => {
         make({ model: "gpt-4o" as never });
         expect.unreachable();
       } catch (err) {
-        expect(isInboardError(err) && err.code).toBe("INVALID_OPTIONS");
+        expect(isLocalLLMError(err) && err.code).toBe("INVALID_OPTIONS");
       }
     });
 

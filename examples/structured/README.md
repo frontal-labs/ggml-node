@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@inboard/example-structured' start
+bun --filter '@local-llm/example-structured' start
 ```
 
 ## Notes

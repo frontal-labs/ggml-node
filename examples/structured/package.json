@@ -1,5 +1,5 @@
 {
-  "name": "@inboard/example-structured",
+  "name": "@local-llm/example-structured",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "inboard-sdk": "file:../..",
+    "local-llm": "file:../..",
     "zod": "^4.6.7"
   }
 }

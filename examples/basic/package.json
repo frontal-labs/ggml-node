@@ -1,5 +1,5 @@
 {
-  "name": "@inboard/example-basic",
+  "name": "@local-llm/example-basic",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "inboard-sdk": "file:../.."
+    "local-llm": "file:../.."
   }
 }

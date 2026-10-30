@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isInboardError } from "@/core/errors.js";
-import type { InboardEvent } from "@/core/types.js";
+import { isLocalLLMError } from "@/core/errors.js";
+import type { LocalLLMEvent } from "@/core/types.js";
 import { ensureEntry, ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
 import { type FixtureServer, startFixtureServer } from "../../helpers/fixture-server.js";
@@ -14,7 +14,7 @@ describe("ensureModel and ensureEntry", () => {
   let server: FixtureServer | undefined;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "inboard-ensure-"));
+    dir = await mkdtemp(join(tmpdir(), "local-llm-ensure-"));
   });
 
   afterEach(async () => {
@@ -40,8 +40,8 @@ describe("ensureModel and ensureEntry", () => {
       (e: unknown) => e,
     );
 
-    expect(isInboardError(err) && err.code).toBe("MODEL_NOT_FOUND");
-    expect(isInboardError(err) && err.hint).toContain("Offline mode is on");
+    expect(isLocalLLMError(err) && err.code).toBe("MODEL_NOT_FOUND");
+    expect(isLocalLLMError(err) && err.hint).toContain("Offline mode is on");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -56,8 +56,8 @@ describe("ensureModel and ensureEntry", () => {
       (e: unknown) => e,
     );
 
-    expect(isInboardError(err) && err.code).toBe("MODEL_NOT_FOUND");
-    expect(isInboardError(err) && err.hint).toBe("Run: npx inboard pull qwen2.5-0.5b");
+    expect(isLocalLLMError(err) && err.code).toBe("MODEL_NOT_FOUND");
+    expect(isLocalLLMError(err) && err.hint).toBe("Run: npx local-llm pull qwen2.5-0.5b");
   });
 
   it("returns the existing file without any network call when its size matches", async () => {
@@ -100,8 +100,8 @@ describe("ensureModel and ensureEntry", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isInboardError(err) && err.code).toBe("LICENSE_NOT_ACCEPTED");
-    expect(isInboardError(err) && err.hint).toContain("https://example.test/LICENSE");
+    expect(isLocalLLMError(err) && err.code).toBe("LICENSE_NOT_ACCEPTED");
+    expect(isLocalLLMError(err) && err.hint).toContain("https://example.test/LICENSE");
     expect(server.requests).toHaveLength(0);
 
     const path = await ensureEntry(entry, {
@@ -116,7 +116,7 @@ describe("ensureModel and ensureEntry", () => {
   it("emits download:start, progress and done events in order", async () => {
     const body = randomBytes(8192);
     server = await startFixtureServer(body);
-    const events: InboardEvent[] = [];
+    const events: LocalLLMEvent[] = [];
     const entry = {
       file: "events.gguf",
       id: "qwen2.5-0.5b" as ModelId,

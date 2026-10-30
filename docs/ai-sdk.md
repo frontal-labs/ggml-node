@@ -1,13 +1,13 @@
 # AI SDK provider
 
-`inboard-sdk/ai` is a provider for [the AI SDK](https://ai-sdk.dev) (spec v4, `@ai-sdk/provider` 4.x). It works with `generateText`, `streamText` and `generateObject`.
+`local-llm/ai` is a provider for [the AI SDK](https://ai-sdk.dev) (spec v4, `@ai-sdk/provider` 4.x). It works with `generateText`, `streamText` and `generateObject`.
 
 ```ts
 import { generateText, streamText, generateObject } from "ai";
-import { inboard, createInboardProvider } from "inboard-sdk/ai";
+import { local-llm, createLocalLLMProvider } from "local-llm/ai";
 import { z } from "zod";
 
-const model = inboard("qwen2.5-0.5b");
+const model = localLLM("qwen2.5-0.5b");
 
 await generateText({ model, prompt: "Hello", maxOutputTokens: 64, temperature: 0 });
 
@@ -23,18 +23,18 @@ await generateObject({
 
 ## Choosing a model and settings
 
-`inboard(modelId, settings?)` takes the same settings as `createInboard`, except `model`:
+`local-llm(modelId, settings?)` takes the same settings as `createLocalLLM`, except `model`:
 
 ```ts
-const local = inboard("qwen2.5-0.5b", { maxConcurrency: 2, cacheDir: "./models" });
+const local = localLLM("qwen2.5-0.5b", { maxConcurrency: 2, cacheDir: "./models" });
 ```
 
 Calls with the same model and settings share one loaded instance. The model loads once per process.
 
-For several settings sets, or for a provider you configure in one place, use `createInboardProvider`:
+For several settings sets, or for a provider you configure in one place, use `createLocalLLMProvider`:
 
 ```ts
-const provider = createInboardProvider({ maxConcurrency: 2 });
+const provider = createLocalLLMProvider({ maxConcurrency: 2 });
 const model = provider.languageModel("qwen2.5-0.5b"); // or provider("qwen2.5-0.5b")
 ```
 
@@ -42,7 +42,7 @@ const model = provider.languageModel("qwen2.5-0.5b"); // or provider("qwen2.5-0.
 
 ## What maps to what
 
-| AI SDK | inboard |
+| AI SDK | local-llm |
 | --- | --- |
 | `maxOutputTokens` | `maxTokens` |
 | `temperature`, `topP`, `topK`, `seed` | the same |

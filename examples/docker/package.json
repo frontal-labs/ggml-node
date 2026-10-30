@@ -1,13 +1,13 @@
 {
-  "name": "@inboard/example-docker",
+  "name": "@local-llm/example-docker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t inboard-example .",
+    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t local-llm-example .",
     "start": "node src/server.mjs"
   },
   "dependencies": {
-    "inboard-sdk": "file:../.."
+    "local-llm": "file:../.."
   }
 }

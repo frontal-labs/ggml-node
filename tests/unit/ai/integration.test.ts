@@ -5,7 +5,7 @@ import { generateObject, generateText, streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { languageModelFor } from "@/ai/model.js";
-import { createInboardWithDeps } from "@/core/inboard.js";
+import { createLocalLLMWithDeps } from "@/core/local-llm.js";
 import { createFakeBackend } from "../../helpers/fake-backend.js";
 
 /**
@@ -15,7 +15,7 @@ describe("AI SDK integration (fake backend)", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "inboard-sdk-"));
+    dir = await mkdtemp(join(tmpdir(), "local-llm-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
   });
 
@@ -25,11 +25,11 @@ describe("AI SDK integration (fake backend)", () => {
 
   function modelWith(respond: (messages: { role: string; content: string }[]) => string) {
     const backend = createFakeBackend({ respond });
-    const inboard = createInboardWithDeps(
+    const llm = createLocalLLMWithDeps(
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        env: { INBOARD_CACHE_DIR: dir },
+        env: { LOCAL_LLM_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
           cgroupCurrentBytes: async () => undefined,
@@ -42,7 +42,7 @@ describe("AI SDK integration (fake backend)", () => {
         }),
       },
     );
-    return languageModelFor("qwen2.5-0.5b", inboard);
+    return languageModelFor("qwen2.5-0.5b", llm);
   }
 
   it("generateText returns the text and usage", async () => {

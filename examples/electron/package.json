@@ -1,5 +1,5 @@
 {
-  "name": "@inboard/example-electron",
+  "name": "@local-llm/example-electron",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,6 @@
     "start": "electron ."
   },
   "dependencies": {
-    "inboard-sdk": "file:../.."
+    "local-llm": "file:../.."
   }
 }

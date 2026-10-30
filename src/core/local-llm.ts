@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: LocalLLMError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
@@ -6,7 +6,7 @@ import { createIsolatedBackend } from "@/backend/isolated/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
-import { InboardError, isInboardError } from "@/core/errors.js";
+import { isLocalLLMError, LocalLLMError } from "@/core/errors.js";
 import { emitEvent } from "@/core/events.js";
 import {
   estimateModelBytes,
@@ -16,7 +16,7 @@ import {
 } from "@/core/memory.js";
 import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
 import { abortedError, Scheduler } from "@/core/scheduler.js";
-import { firstIssue, inboardOptionsSchema } from "@/core/schemas.js";
+import { firstIssue, localLLMOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
@@ -27,16 +27,16 @@ import {
 import type {
   GenerateOptions,
   GenerateResult,
-  Inboard,
-  InboardOptions,
   JsonSchemaObject,
+  LocalLLM,
+  LocalLLMOptions,
   ModelInfo,
   ObjectOptions,
   ObjectResult,
   StreamResult,
   ZodLikeSchema,
 } from "@/core/types.js";
-import { env as defaultEnv, type InboardEnv } from "@/env.js";
+import { env as defaultEnv, type LocalLLMEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
@@ -44,19 +44,19 @@ import { MODELS, type ModelId } from "@/registry/models.js";
 const DEFAULT_CONTEXT_CAP = 4096;
 
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
-export interface InboardDeps {
+export interface LocalLLMDeps {
   createBackend: () => Backend;
   /** Backend for `isolation: "process"`: the native backend in a child process. */
   createIsolatedBackend: () => Backend;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
-  env: InboardEnv;
+  env: LocalLLMEnv;
   memory: MemoryReaders;
-  /** Whether a custom model path exists. Injected so tests and `inboard/testing` need no file. */
+  /** Whether a custom model path exists. Injected so tests and `local-llm/testing` need no file. */
   pathExists: (path: string) => Promise<boolean>;
   readMeta: (path: string) => Promise<ModelMeta>;
 }
 
-export const defaultDeps: InboardDeps = {
+export const defaultDeps: LocalLLMDeps = {
   createBackend: createLlamaCppBackend,
   createIsolatedBackend: () => createIsolatedBackend(),
   env: defaultEnv,
@@ -95,15 +95,15 @@ interface RunOutcome {
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
-export function createInboard(options: InboardOptions): Inboard {
-  return createInboardWithDeps(options, defaultDeps);
+export function createLocalLLM(options: LocalLLMOptions): LocalLLM {
+  return createLocalLLMWithDeps(options, defaultDeps);
 }
 
-export function createInboardWithDeps(
-  options: InboardOptions,
-  overrides: Partial<InboardDeps> = {},
-): Inboard {
-  const deps: InboardDeps = { ...defaultDeps, ...overrides };
+export function createLocalLLMWithDeps(
+  options: LocalLLMOptions,
+  overrides: Partial<LocalLLMDeps> = {},
+): LocalLLM {
+  const deps: LocalLLMDeps = { ...defaultDeps, ...overrides };
   validateOptions(options);
 
   const id: ModelId | "custom" = typeof options.model === "string" ? options.model : "custom";
@@ -149,7 +149,7 @@ export function createInboardWithDeps(
       license = "unknown";
       contextCap = Number.POSITIVE_INFINITY;
       if (!(await deps.pathExists(path))) {
-        throw new InboardError("MODEL_NOT_FOUND", `No file at ${path}`, {
+        throw new LocalLLMError("MODEL_NOT_FOUND", `No file at ${path}`, {
           hint: "Check the path. Custom models must be GGUF files on disk.",
         });
       }
@@ -160,7 +160,7 @@ export function createInboardWithDeps(
       options.contextSize ??
       Math.min(Math.min(contextCap, meta.trainContextSize), DEFAULT_CONTEXT_CAP);
     if (!Number.isInteger(contextSize) || contextSize < 1) {
-      throw new InboardError("INVALID_OPTIONS", "contextSize must be a positive integer", {
+      throw new LocalLLMError("INVALID_OPTIONS", "contextSize must be a positive integer", {
         hint: "Set contextSize to a whole number, or leave it unset.",
       });
     }
@@ -194,7 +194,7 @@ export function createInboardWithDeps(
       return { backend, info, scheduler: new Scheduler({ maxQueue, sequences: maxConcurrency }) };
     } catch (err) {
       await backend.unload().catch(() => undefined);
-      throw toInboardError(err);
+      throw toLocalLLMError(err);
     }
   }
 
@@ -230,7 +230,7 @@ export function createInboardWithDeps(
     const { backend, scheduler, info } = state;
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
-      throw new InboardError(
+      throw new LocalLLMError(
         "INVALID_OPTIONS",
         `maxTokens (${req.maxTokens}) must be less than contextSize (${info.contextSize})`,
         { hint: "Lower maxTokens or raise contextSize." },
@@ -267,7 +267,7 @@ export function createInboardWithDeps(
       };
       outcome = await backend.generate(lease.index, request, (text) => onDelta?.(text));
     } catch (err) {
-      throw toInboardError(err);
+      throw toLocalLLMError(err);
     } finally {
       lease.release();
     }
@@ -301,7 +301,7 @@ export function createInboardWithDeps(
       emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       return result;
     } catch (err) {
-      emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -331,7 +331,7 @@ export function createInboardWithDeps(
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
     } catch (err) {
-      emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -367,13 +367,13 @@ export function createInboardWithDeps(
         return finished;
       },
       (err: unknown) => {
-        if (isInboardError(err) && err.code === "ABORTED" && controller.signal.aborted) {
+        if (isLocalLLMError(err) && err.code === "ABORTED" && controller.signal.aborted) {
           // Aborted while queued: nothing was generated. Resolve, as the contract says.
           chunks.close();
           return emptyAbortResult();
         }
         chunks.fail(err);
-        emitEvent(onEvent, { error: toInboardError(err), id: requestId, type: "request:error" });
+        emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
         throw err;
       },
     );
@@ -412,7 +412,7 @@ export function createInboardWithDeps(
     info(): ModelInfo | null {
       return loaded?.info ?? null;
     },
-    object: object as Inboard["object"],
+    object: object as LocalLLM["object"],
     async ready(): Promise<ModelInfo> {
       const { state } = await ensureLoaded();
       return state.info;
@@ -440,14 +440,14 @@ export function createInboardWithDeps(
   };
 }
 
-function validateOptions(options: InboardOptions): void {
-  const parsed = inboardOptionsSchema.safeParse(options);
+function validateOptions(options: LocalLLMOptions): void {
+  const parsed = localLLMOptionsSchema.safeParse(options);
   if (parsed.success) {
     return;
   }
   const issue = firstIssue(parsed.error);
-  throw new InboardError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
-    hint: "Check createInboard options against docs/api.md.",
+  throw new LocalLLMError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+    hint: "Check createLocalLLM options against docs/api.md.",
   });
 }
 
@@ -482,7 +482,7 @@ function checkStructured(
 /** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */
 function asJsonSchemaObject(schema: unknown): JsonSchemaObject {
   if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
-    throw new InboardError(
+    throw new LocalLLMError(
       "INVALID_OPTIONS",
       "schema must be a Zod schema or a JSON Schema object",
       {
@@ -498,16 +498,16 @@ function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {
   return rest;
 }
 
-function toInboardError(err: unknown): InboardError {
-  if (isInboardError(err)) {
+function toLocalLLMError(err: unknown): LocalLLMError {
+  if (isLocalLLMError(err)) {
     return err;
   }
-  return new InboardError(
+  return new LocalLLMError(
     "BACKEND_CRASHED",
     err instanceof Error ? err.message : "Unknown backend error",
     {
       cause: err,
-      hint: "Run: npx inboard doctor. If this persists, report it with the stack trace.",
+      hint: "Run: npx local-llm doctor. If this persists, report it with the stack trace.",
     },
   );
 }

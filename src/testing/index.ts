@@ -1,25 +1,25 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { languageModelFor } from "@/ai/model.js";
-import { createInboardWithDeps } from "@/core/inboard.js";
-import type { Inboard } from "@/core/types.js";
+import { createLocalLLMWithDeps } from "@/core/local-llm.js";
+import type { LocalLLM } from "@/core/types.js";
 import { createMockBackend, type MockBackendOptions } from "@/testing/mock-backend.js";
 
 /**
- * `inboard-sdk/testing`: an Inboard that answers without a model. It loads no native code, needs no
- * file, and returns the same shapes as the real thing. Use it in unit tests of code that calls Inboard.
+ * `local-llm/testing`: an LocalLLM that answers without a model. It loads no native code, needs no
+ * file, and returns the same shapes as the real thing. Use it in unit tests of code that calls LocalLLM.
  */
 
 export type { MockBackendOptions, MockResponder } from "@/testing/mock-backend.js";
 
-export interface MockInboardOptions extends MockBackendOptions {
+export interface MockLocalLLMOptions extends MockBackendOptions {
   /** The model id reported in results. Default "custom". */
   model?: string;
 }
 
-export function createMockInboard(options: MockInboardOptions = {}): Inboard {
+export function createMockLocalLLM(options: MockLocalLLMOptions = {}): LocalLLM {
   const { model: _model, ...backend } = options;
-  return createInboardWithDeps(
-    { model: { path: "mock://inboard" } },
+  return createLocalLLMWithDeps(
+    { model: { path: "mock://local-llm" } },
     {
       createBackend: () => createMockBackend(backend),
       memory: {
@@ -37,7 +37,7 @@ export function createMockInboard(options: MockInboardOptions = {}): Inboard {
   );
 }
 
-/** An AI SDK language model that answers from a mock Inboard. Works with `generateText` and friends. */
+/** An AI SDK language model that answers from a mock LocalLLM. Works with `generateText` and friends. */
 export function mockModel(options: MockBackendOptions = {}): LanguageModelV4 {
-  return languageModelFor("mock", createMockInboard(options));
+  return languageModelFor("mock", createMockLocalLLM(options));
 }

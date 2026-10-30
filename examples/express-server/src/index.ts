@@ -1,14 +1,14 @@
 /**
- * An Express endpoint that serves one shared model. inboard is a library, not a server: the HTTP
+ * An Express endpoint that serves one shared model. local-llm is a library, not a server: the HTTP
  * layer here is yours. Run from the repo root:
- *   bun run build && bun --filter '@inboard/example-express-server' start
+ *   bun run build && bun --filter '@local-llm/example-express-server' start
  * Then: curl -s localhost:3000/generate -H 'content-type: application/json' -d '{"prompt":"Hi"}'
  */
 import express from "express";
-import { createInboard, isInboardError } from "inboard-sdk";
+import { createLocalLLM, isLocalLLMError } from "local-llm";
 import { z } from "zod";
 
-const ai = createInboard({ maxConcurrency: 2, maxQueue: 16, model: "qwen2.5-0.5b" });
+const ai = createLocalLLM({ maxConcurrency: 2, maxQueue: 16, model: "qwen2.5-0.5b" });
 const body = z.object({
   maxTokens: z.number().int().min(1).max(256).default(64),
   prompt: z.string().min(1),
@@ -30,10 +30,10 @@ app.post("/generate", async (req, res) => {
     });
     res.json({ finishReason: result.finishReason, text: result.text, usage: result.usage });
   } catch (err) {
-    // Map inboard's codes to HTTP: a full queue is a 503, everything else is reported as-is.
-    const status = isInboardError(err) && err.code === "QUEUE_FULL" ? 503 : 500;
+    // Map local-llm's codes to HTTP: a full queue is a 503, everything else is reported as-is.
+    const status = isLocalLLMError(err) && err.code === "QUEUE_FULL" ? 503 : 500;
     res.status(status).json({
-      code: isInboardError(err) ? err.code : "UNKNOWN",
+      code: isLocalLLMError(err) ? err.code : "UNKNOWN",
       error: err instanceof Error ? err.message : String(err),
     });
   }

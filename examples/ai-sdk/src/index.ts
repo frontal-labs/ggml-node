@@ -1,12 +1,12 @@
 /**
- * Inboard with the AI SDK: generateText, streamText and generateObject.
- * Run from the repo root: `bun run build && bun --filter @inboard/example-ai-sdk start`
+ * LocalLLM with the AI SDK: generateText, streamText and generateObject.
+ * Run from the repo root: `bun run build && bun --filter @local-llm/example-ai-sdk start`
  */
 import { generateObject, generateText, streamText } from "ai";
-import { inboard } from "inboard-sdk/ai";
+import { localLLM } from "local-llm/ai";
 import { z } from "zod";
 
-const model = inboard("qwen2.5-0.5b");
+const model = localLLM("qwen2.5-0.5b");
 
 const text = await generateText({
   maxOutputTokens: 48,

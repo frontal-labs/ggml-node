@@ -1,5 +1,5 @@
 // biome-ignore-all lint/suspicious/useAwait: backend methods return promises for one uniform interface
-// biome-ignore-all lint/style/useErrorCause: InboardError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: LocalLLMError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import type { ChatHistoryItem } from "node-llama-cpp";
 import type {
@@ -11,11 +11,11 @@ import type {
   JsonGrammar,
   ParsedOutput,
 } from "@/backend/types.js";
-import { InboardError } from "@/core/errors.js";
+import { LocalLLMError } from "@/core/errors.js";
 import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
 
 /**
- * `node-llama-cpp` backend. The package is imported on first use, so importing `inboard` alone
+ * `node-llama-cpp` backend. The package is imported on first use, so importing `local-llm` alone
  * never loads the native binary.
  *
  * The chat template comes from the GGUF metadata (`chatWrapper: "auto"`). It is never hand-written.
@@ -48,7 +48,7 @@ export function createLlamaCppBackend(): Backend {
 
   function state(): Loaded {
     if (!loaded) {
-      throw new InboardError("INVALID_OPTIONS", "The backend is not loaded", {
+      throw new LocalLLMError("INVALID_OPTIONS", "The backend is not loaded", {
         hint: "Call ready() first.",
       });
     }
@@ -58,7 +58,7 @@ export function createLlamaCppBackend(): Backend {
   function sequence(index: number): LlamaContextSequence {
     const seq = state().sequences[index];
     if (!seq) {
-      throw new InboardError("INVALID_OPTIONS", `No sequence ${index}`, {
+      throw new LocalLLMError("INVALID_OPTIONS", `No sequence ${index}`, {
         hint: "Check maxConcurrency.",
       });
     }
@@ -74,7 +74,7 @@ export function createLlamaCppBackend(): Backend {
   function grammarOf(key: string): NativeGrammar {
     const native = nativeGrammars.get(key);
     if (!native) {
-      throw new InboardError("INVALID_OPTIONS", "The grammar is not loaded in this backend", {
+      throw new LocalLLMError("INVALID_OPTIONS", "The grammar is not loaded in this backend", {
         hint: "Build the grammar with buildJsonGrammar() after the model is loaded.",
       });
     }
@@ -95,7 +95,7 @@ export function createLlamaCppBackend(): Backend {
           schema as Parameters<Llama["createGrammarForJsonSchema"]>[0],
         );
       } catch (err) {
-        throw new InboardError(
+        throw new LocalLLMError(
           "INVALID_OPTIONS",
           "The JSON Schema could not be compiled into a grammar",
           {
@@ -176,12 +176,12 @@ export function createLlamaCppBackend(): Backend {
           logLevel: lib.LlamaLogLevel.error,
         });
       } catch (err) {
-        throw new InboardError(
+        throw new LocalLLMError(
           "UNSUPPORTED_PLATFORM",
           "node-llama-cpp could not start a backend on this machine",
           {
             cause: err,
-            hint: "Run: npx inboard doctor. Check that the prebuilt binary matches your OS and CPU architecture.",
+            hint: "Run: npx local-llm doctor. Check that the prebuilt binary matches your OS and CPU architecture.",
           },
         );
       }

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start with `npx inboard doctor`. It checks the platform, memory, cache, and that the backend loads, and it prints a fix for each problem.
+Start with `npx local-llm doctor`. It checks the platform, memory, cache, and that the backend loads, and it prints a fix for each problem.
 
 ## Errors by code
 
@@ -8,8 +8,8 @@ Start with `npx inboard doctor`. It checks the platform, memory, cache, and that
 
 The model is not cached, and it cannot be downloaded in this mode.
 
-- Run `npx inboard pull qwen2.5-0.5b`.
-- If you set `offline: true` or `INBOARD_OFFLINE=1`, pull the model on a connected machine and copy the file to the cache directory.
+- Run `npx local-llm pull qwen2.5-0.5b`.
+- If you set `offline: true` or `LOCAL_LLM_OFFLINE=1`, pull the model on a connected machine and copy the file to the cache directory.
 - If you passed a custom `{ path }`, check that the file exists.
 
 ### `DOWNLOAD_FAILED`
@@ -80,12 +80,12 @@ The first call loads the model from disk, which can take seconds, or much longer
 
 ### A warning about `</s>` or a control token
 
-node-llama-cpp prints this for some GGUF files. inboard sets the native log level to `error`, so it should not appear. If it does, it is harmless.
+node-llama-cpp prints this for some GGUF files. local-llm sets the native log level to `error`, so it should not appear. If it does, it is harmless.
 
-### `inboard doctor` says the backend failed to load
+### `local-llm doctor` says the backend failed to load
 
-Its `fix:` line says what to do. Common causes are a corrupted cache file (run `npx inboard cache clear qwen2.5-0.5b` and pull again) and a platform the prebuilt binary does not support.
+Its `fix:` line says what to do. Common causes are a corrupted cache file (run `npx local-llm cache clear qwen2.5-0.5b` and pull again) and a platform the prebuilt binary does not support.
 
-### `inboard` reports `error: unknown option` or `unknown command`
+### `local-llm` reports `error: unknown option` or `unknown command`
 
-Run `npx inboard --help` for the current commands and options.
+Run `npx local-llm --help` for the current commands and options.

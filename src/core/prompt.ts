@@ -1,4 +1,4 @@
-import { InboardError } from "@/core/errors.js";
+import { LocalLLMError } from "@/core/errors.js";
 import { firstIssue, generateOptionsSchema } from "@/core/schemas.js";
 import type { GenerateOptions, Message } from "@/core/types.js";
 
@@ -146,8 +146,8 @@ function findLastIndex<T>(items: readonly T[], predicate: (item: T) => boolean):
   return -1;
 }
 
-function overflow(tokens: number, budget: number): InboardError {
-  return new InboardError(
+function overflow(tokens: number, budget: number): LocalLLMError {
+  return new LocalLLMError(
     "CONTEXT_OVERFLOW",
     `Prompt is ${tokens} tokens, but only ${budget} fit in the context`,
     {
@@ -156,6 +156,6 @@ function overflow(tokens: number, budget: number): InboardError {
   );
 }
 
-function invalid(message: string, hint: string): InboardError {
-  return new InboardError("INVALID_OPTIONS", message, { hint });
+function invalid(message: string, hint: string): LocalLLMError {
+  return new LocalLLMError("INVALID_OPTIONS", message, { hint });
 }

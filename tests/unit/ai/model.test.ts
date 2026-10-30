@@ -9,8 +9,8 @@ import type {
 } from "@ai-sdk/provider";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { languageModelFor, mapPrompt } from "@/ai/model.js";
-import { isInboardError } from "@/core/errors.js";
-import { createInboardWithDeps } from "@/core/inboard.js";
+import { isLocalLLMError } from "@/core/errors.js";
+import { createLocalLLMWithDeps } from "@/core/local-llm.js";
 import { createFakeBackend, type FakeBackend } from "../../helpers/fake-backend.js";
 
 const SHAPE = { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 };
@@ -87,12 +87,12 @@ describe("mapPrompt", () => {
   });
 });
 
-describe("InboardLanguageModel", () => {
+describe("LocalLLMLanguageModel", () => {
   let dir: string;
   let backend: FakeBackend;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "inboard-model-"));
+    dir = await mkdtemp(join(tmpdir(), "local-llm-model-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
     backend = createFakeBackend({ respond: (messages) => `reply to ${messages.at(-1)?.content}` });
   });
@@ -102,11 +102,11 @@ describe("InboardLanguageModel", () => {
   });
 
   function model() {
-    const inboard = createInboardWithDeps(
+    const llm = createLocalLLMWithDeps(
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        env: { INBOARD_CACHE_DIR: dir },
+        env: { LOCAL_LLM_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
           cgroupCurrentBytes: async () => undefined,
@@ -115,13 +115,13 @@ describe("InboardLanguageModel", () => {
         readMeta: async () => ({ shape: SHAPE, sizeBytes: 100, trainContextSize: 4096 }),
       },
     );
-    return languageModelFor("qwen2.5-0.5b", inboard);
+    return languageModelFor("qwen2.5-0.5b", llm);
   }
 
   it("has the v4 spec identity fields", () => {
     const m = model();
     expect(m.specificationVersion).toBe("v4");
-    expect(m.provider).toBe("inboard");
+    expect(m.provider).toBe("local-llm");
     expect(m.modelId).toBe("qwen2.5-0.5b");
   });
 
@@ -169,7 +169,7 @@ describe("InboardLanguageModel", () => {
         () => undefined,
         (e: unknown) => e,
       );
-    expect(isInboardError(err) && err.code).toBe("INVALID_OPTIONS");
+    expect(isLocalLLMError(err) && err.code).toBe("INVALID_OPTIONS");
   });
 
   it("doStream emits the spec part sequence in order", async () => {

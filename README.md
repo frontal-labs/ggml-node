@@ -1,16 +1,16 @@
-# Inboard SDK
+# Local LLM
 
 ![Frontal Banner](./banner.jpg)
 
 An AI model SDK inside your Node process. No daemon, no API key, no port.
 
-`inboard-sdk` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
+`local-llm` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
 
 ```ts
-import { createInboard } from "inboard-sdk";
+import { createLocalLLM } from "local-llm";
 import { z } from "zod";
 
-const ai = createInboard({ model: "qwen2.5-0.5b" });
+const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
 
 const { text } = await ai.generate({ prompt: "In one sentence, what is a river?", maxTokens: 64 });
 
@@ -25,8 +25,8 @@ await ai.unload();
 ## Install
 
 ```sh
-npm install inboard-sdk
-npx inboard pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
+npm install local-llm
+npx local-llm pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
 ```
 
 Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, and a GPU is optional.
@@ -35,17 +35,17 @@ Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, an
 
 ```ts
 import { generateText } from "ai";
-import { inboard } from "inboard-sdk/ai";
+import { localLLM } from "local-llm/ai";
 
-const { text } = await generateText({ model: inboard("qwen2.5-0.5b"), prompt: "Hello" });
+const { text } = await generateText({ model: localLLM("qwen2.5-0.5b"), prompt: "Hello" });
 ```
 
 ## Test without a model
 
 ```ts
-import { createMockInboard } from "inboard-sdk/testing";
+import { createMockLocalLLM } from "local-llm/testing";
 
-const ai = createMockInboard({ respond: "a fixed answer" });
+const ai = createMockLocalLLM({ respond: "a fixed answer" });
 ```
 
 ## Models
@@ -56,16 +56,16 @@ const ai = createMockInboard({ respond: "a fixed answer" });
 | `qwen2.5-1.5b` | 1.12 GB | 32768 | Apache-2.0 |
 | `smollm2-360m` | 386 MB | 8192 | Apache-2.0 |
 
-Any other GGUF file works through `createInboard({ model: { path } })`.
+Any other GGUF file works through `createLocalLLM({ model: { path } })`.
 
 ## Command line
 
 ```sh
-npx inboard list                              # models and cache state
-npx inboard run "What is a river?"            # generate
-npx inboard run "Extract: Alex, 34" --json-schema person.json
-npx inboard bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
-npx inboard doctor                            # checks the machine and the backend
+npx local-llm list                              # models and cache state
+npx local-llm run "What is a river?"            # generate
+npx local-llm run "Extract: Alex, 34" --json-schema person.json
+npx local-llm bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
+npx local-llm doctor                            # checks the machine and the backend
 ```
 
 ## Documentation

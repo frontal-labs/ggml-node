@@ -8,16 +8,16 @@ From the repository root:
 
 ```sh
 bun run build
-bun pm pack                               # writes inboard-sdk-<version>.tgz
-docker build -f examples/docker/Dockerfile -t inboard-example .
-docker run --rm -p 3000:3000 inboard-example
+bun pm pack                               # writes local-llm-<version>.tgz
+docker build -f examples/docker/Dockerfile -t local-llm-example .
+docker run --rm -p 3000:3000 local-llm-example
 curl -s localhost:3000/generate -H 'content-type: application/json' -d '{"prompt":"Say hi."}'
 ```
 
-The image installs the packed tarball, so it builds before `inboard-sdk` is on npm. Once it is published, replace the two `COPY inboard-sdk-*.tgz` / `npm install` steps with `npm install inboard-sdk`.
+The image installs the packed tarball, so it builds before `local-llm` is on npm. Once it is published, replace the two `COPY local-llm-*.tgz` / `npm install` steps with `npm install local-llm`.
 
 ## Notes
 
-- `INBOARD_OFFLINE=1` makes the running container refuse to download. The model must already be in the image, which the `model` stage guarantees.
+- `LOCAL_LLM_OFFLINE=1` makes the running container refuse to download. The model must already be in the image, which the `model` stage guarantees.
 - The `model` stage needs network access during `docker build`, to download the 491 MB model.
 - This example has not been built in this repository. The Docker daemon was not running when it was prepared. Build it on your machine before you rely on it.

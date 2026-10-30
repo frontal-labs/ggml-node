@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { InboardError } from "@/core/errors.js";
-import type { InboardEvent } from "@/core/types.js";
+import { LocalLLMError } from "@/core/errors.js";
+import type { LocalLLMEvent } from "@/core/types.js";
 import { downloadFile } from "@/registry/download.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
 
@@ -27,7 +27,7 @@ export interface EnsureModelOptions {
   fetch?: typeof fetch | undefined;
   /** Whether offline mode is what blocked the download. Only changes the hint. */
   offline: boolean;
-  onEvent?: ((event: InboardEvent) => void) | undefined;
+  onEvent?: ((event: LocalLLMEvent) => void) | undefined;
   signal?: AbortSignal | undefined;
 }
 
@@ -58,7 +58,7 @@ export async function ensureEntry(
   options: EnsureModelOptions,
 ): Promise<string> {
   if (!(PERMISSIVE_LICENSES.has(model.license) || options.acceptLicense)) {
-    throw new InboardError(
+    throw new LocalLLMError(
       "LICENSE_NOT_ACCEPTED",
       `Model ${model.id} is licensed under ${model.license}`,
       {
@@ -73,10 +73,10 @@ export async function ensureEntry(
   }
 
   if (!options.allowDownload) {
-    throw new InboardError("MODEL_NOT_FOUND", `Model ${model.id} is not in the cache`, {
+    throw new LocalLLMError("MODEL_NOT_FOUND", `Model ${model.id} is not in the cache`, {
       hint: options.offline
-        ? `Offline mode is on. Run "npx inboard pull ${model.id}" while online, or copy the file to ${options.cacheDir}.`
-        : `Run: npx inboard pull ${model.id}`,
+        ? `Offline mode is on. Run "npx local-llm pull ${model.id}" while online, or copy the file to ${options.cacheDir}.`
+        : `Run: npx local-llm pull ${model.id}`,
     });
   }
 

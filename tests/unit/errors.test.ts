@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { INBOARD_ERROR_CODES, InboardError, isInboardError } from "@/index.js";
+import { isLocalLLMError, LOCAL_LLM_ERROR_CODES, LocalLLMError } from "@/index.js";
 
-describe("InboardError", () => {
+describe("LocalLLMError", () => {
   it("carries code, hint and cause", () => {
     const cause = new Error("disk full");
-    const err = new InboardError("DOWNLOAD_FAILED", "download failed", {
+    const err = new LocalLLMError("DOWNLOAD_FAILED", "download failed", {
       cause,
-      hint: "Run: npx inboard pull qwen2.5-0.5b",
+      hint: "Run: npx local-llm pull qwen2.5-0.5b",
     });
     expect(err).toBeInstanceOf(Error);
-    expect(err.name).toBe("InboardError");
+    expect(err.name).toBe("LocalLLMError");
     expect(err.code).toBe("DOWNLOAD_FAILED");
-    expect(err.hint).toBe("Run: npx inboard pull qwen2.5-0.5b");
+    expect(err.hint).toBe("Run: npx local-llm pull qwen2.5-0.5b");
     expect(err.cause).toBe(cause);
-    expect(isInboardError(err)).toBe(true);
-    expect(isInboardError(new Error("x"))).toBe(false);
+    expect(isLocalLLMError(err)).toBe(true);
+    expect(isLocalLLMError(new Error("x"))).toBe(false);
   });
 
   it("enumerates exactly the codes in Section 3.3", () => {
-    expect([...INBOARD_ERROR_CODES].sort()).toEqual(
+    expect([...LOCAL_LLM_ERROR_CODES].sort()).toEqual(
       [
         "MODEL_NOT_FOUND",
         "DOWNLOAD_FAILED",

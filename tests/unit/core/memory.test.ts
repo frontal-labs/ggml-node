@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isInboardError } from "@/core/errors.js";
+import { isLocalLLMError } from "@/core/errors.js";
 import {
   availableMemoryBytes,
   estimateKvBytes,
@@ -52,8 +52,8 @@ describe("memory estimates", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isInboardError(err) && err.code).toBe("OUT_OF_MEMORY");
-    expect(isInboardError(err) && err.hint).toContain("contextSize");
+    expect(isLocalLLMError(err) && err.code).toBe("OUT_OF_MEMORY");
+    expect(isLocalLLMError(err) && err.hint).toContain("contextSize");
   });
 
   it("passes when the estimate fits", async () => {

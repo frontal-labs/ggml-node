@@ -10,15 +10,15 @@ import type {
   LanguageModelV4Usage,
   SharedV4Warning,
 } from "@ai-sdk/provider";
-import { InboardError } from "@/core/errors.js";
-import type { GenerateResult, Inboard, Message } from "@/core/types.js";
+import { LocalLLMError } from "@/core/errors.js";
+import type { GenerateResult, LocalLLM, Message } from "@/core/types.js";
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.
- * Tests build models directly from a fake-backed Inboard through `languageModelFor`.
+ * Tests build models directly from a fake-backed LocalLLM through `languageModelFor`.
  */
-export function languageModelFor(modelId: string, inboard: Inboard): LanguageModelV4 {
-  return new InboardLanguageModel(modelId, inboard);
+export function languageModelFor(modelId: string, llm: LocalLLM): LanguageModelV4 {
+  return new LocalLLMLanguageModel(modelId, llm);
 }
 
 export interface MappedPrompt {
@@ -26,7 +26,7 @@ export interface MappedPrompt {
   warnings: SharedV4Warning[];
 }
 
-/** Maps the AI SDK prompt to inboard messages. Unsupported parts are skipped with a warning. */
+/** Maps the AI SDK prompt to llm messages. Unsupported parts are skipped with a warning. */
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: one branch per prompt part type, kept flat
 export function mapPrompt(prompt: LanguageModelV4Prompt): MappedPrompt {
   const messages: Message[] = [];
@@ -95,7 +95,7 @@ function toolWarnings(options: LanguageModelV4CallOptions): SharedV4Warning[] {
   }
   const choice = options.toolChoice;
   if (choice && (choice.type === "required" || choice.type === "tool")) {
-    throw new InboardError(
+    throw new LocalLLMError(
       "INVALID_OPTIONS",
       `toolChoice "${choice.type}" needs tool calling, which v1 does not have`,
       {
@@ -148,7 +148,7 @@ function sharedCall(options: LanguageModelV4CallOptions, messages: Message[]): S
 }
 
 /** Builds the core options object, leaving out undefined fields (exactOptionalPropertyTypes). */
-function toGenerateOptions(call: SharedCall): Parameters<Inboard["generate"]>[0] {
+function toGenerateOptions(call: SharedCall): Parameters<LocalLLM["generate"]>[0] {
   return {
     messages: call.messages,
     ...(call.maxTokens === undefined ? {} : { maxTokens: call.maxTokens }),
@@ -204,16 +204,16 @@ function jsonPlan(
   };
 }
 
-class InboardLanguageModel implements LanguageModelV4 {
+class LocalLLMLanguageModel implements LanguageModelV4 {
   readonly specificationVersion = "v4" as const;
-  readonly provider = "inboard";
+  readonly provider = "local-llm";
   readonly modelId: string;
   readonly supportedUrls: Record<string, RegExp[]> = {};
-  private readonly inboard: Inboard;
+  private readonly llm: LocalLLM;
 
-  constructor(modelId: string, inboard: Inboard) {
+  constructor(modelId: string, llm: LocalLLM) {
     this.modelId = modelId;
-    this.inboard = inboard;
+    this.llm = llm;
   }
 
   async doGenerate(options: LanguageModelV4CallOptions): Promise<LanguageModelV4GenerateResult> {
@@ -223,7 +223,7 @@ class InboardLanguageModel implements LanguageModelV4 {
     warnings.push(...plan.warnings);
 
     if (plan.schema) {
-      const r = await this.inboard.object({
+      const r = await this.llm.object({
         ...toGenerateOptions(sharedCall(options, plan.messages)),
         schema: plan.schema,
         ...(plan.schemaName ? { schemaName: plan.schemaName } : {}),
@@ -236,7 +236,7 @@ class InboardLanguageModel implements LanguageModelV4 {
       };
     }
 
-    const r = await this.inboard.generate(toGenerateOptions(sharedCall(options, plan.messages)));
+    const r = await this.llm.generate(toGenerateOptions(sharedCall(options, plan.messages)));
     return {
       content: [{ text: r.text, type: "text" }],
       finishReason: finishReasonFor(r.finishReason),
@@ -252,7 +252,7 @@ class InboardLanguageModel implements LanguageModelV4 {
     warnings.push(...plan.warnings);
 
     const id = "text-0";
-    const { inboard } = this;
+    const { llm } = this;
     const call = toGenerateOptions(sharedCall(options, plan.messages));
 
     let abort: (() => void) | undefined;
@@ -274,7 +274,7 @@ class InboardLanguageModel implements LanguageModelV4 {
           try {
             if (plan.schema) {
               // Structured output is not streamed token by token. The whole object arrives as one delta.
-              const r = await inboard.object({
+              const r = await llm.object({
                 ...call,
                 schema: plan.schema,
                 ...(plan.schemaName ? { schemaName: plan.schemaName } : {}),
@@ -287,7 +287,7 @@ class InboardLanguageModel implements LanguageModelV4 {
               return;
             }
 
-            const s = inboard.stream(call);
+            const s = llm.stream(call);
             abort = () => s.abort();
             for await (const delta of s.textStream) {
               controller.enqueue({ delta, id, type: "text-delta" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isInboardError } from "@/core/errors.js";
+import { isLocalLLMError } from "@/core/errors.js";
 import { fitToBudget, normalizeRequest } from "@/core/prompt.js";
 import type { Message } from "@/core/types.js";
 
@@ -11,7 +11,7 @@ async function codeOf(fn: () => unknown): Promise<string | undefined> {
     await fn();
     return undefined;
   } catch (err) {
-    return isInboardError(err) ? err.code : "NOT_INBOARD";
+    return isLocalLLMError(err) ? err.code : "NOT_LOCAL_LLM";
   }
 }
 
@@ -81,7 +81,7 @@ describe("fitToBudget", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isInboardError(err) && err.code).toBe("CONTEXT_OVERFLOW");
+    expect(isLocalLLMError(err) && err.code).toBe("CONTEXT_OVERFLOW");
   });
 
   it("truncate-start drops the oldest removable messages and keeps system and last user", async () => {
@@ -104,6 +104,6 @@ describe("fitToBudget", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isInboardError(err) && err.code).toBe("CONTEXT_OVERFLOW");
+    expect(isLocalLLMError(err) && err.code).toBe("CONTEXT_OVERFLOW");
   });
 });

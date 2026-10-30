@@ -10,7 +10,7 @@ import type {
   BackendResult,
   JsonGrammar,
 } from "@/backend/types.js";
-import { InboardError, type InboardErrorCode } from "@/core/errors.js";
+import { LocalLLMError, type LocalLLMErrorCode } from "@/core/errors.js";
 import type { JsonSchemaObject, Message } from "@/core/types.js";
 
 /**
@@ -71,7 +71,7 @@ export function createIsolatedBackend(options: IsolatedBackendOptions = {}): Bac
   let loadOptions: BackendLoadOptions | undefined;
   let spawns = 0;
   const restartTimes: number[] = [];
-  let failure: InboardError | undefined;
+  let failure: LocalLLMError | undefined;
   let nextId = 1;
   const pending = new Map<number, Pending>();
   /** Grammar schemas by cache key. The worker builds each grammar on first use. */
@@ -104,7 +104,7 @@ export function createIsolatedBackend(options: IsolatedBackendOptions = {}): Bac
     for (const [id, waiter] of pending) {
       pending.delete(id);
       waiter.reject(
-        new InboardError("BACKEND_CRASHED", `The backend process exited (${reason})`, {
+        new LocalLLMError("BACKEND_CRASHED", `The backend process exited (${reason})`, {
           hint: "The next call starts a new backend and reloads the model.",
         }),
       );
@@ -120,7 +120,7 @@ export function createIsolatedBackend(options: IsolatedBackendOptions = {}): Bac
       restartTimes.shift();
     }
     if (restartTimes.length >= maxRestarts) {
-      failure = new InboardError(
+      failure = new LocalLLMError(
         "BACKEND_CRASHED",
         `The backend crashed ${maxRestarts} times within ${windowMs / 1000}s`,
         {
@@ -266,6 +266,6 @@ export function createIsolatedBackend(options: IsolatedBackendOptions = {}): Bac
   };
 }
 
-function fromWire(error: WireError): InboardError {
-  return new InboardError(error.code as InboardErrorCode, error.message, { hint: error.hint });
+function fromWire(error: WireError): LocalLLMError {
+  return new LocalLLMError(error.code as LocalLLMErrorCode, error.message, { hint: error.hint });
 }

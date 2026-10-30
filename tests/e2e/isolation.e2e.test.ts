@@ -3,26 +3,26 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createIsolatedBackend } from "@/backend/isolated/host.js";
-import { createInboardWithDeps, type InboardDeps } from "@/core/inboard.js";
-import type { InboardOptions } from "@/core/types.js";
+import { createLocalLLMWithDeps, type LocalLLMDeps } from "@/core/local-llm.js";
+import type { LocalLLMOptions } from "@/core/types.js";
 import { env } from "@/env.js";
 
 /**
  * Real model in a child process, using the built worker that the published package forks.
- * Needs `bun run build` first. Opt-in: INBOARD_E2E=1.
+ * Needs `bun run build` first. Opt-in: LOCAL_LLM_E2E=1.
  */
-const enabled = env.INBOARD_E2E === "1";
+const enabled = env.LOCAL_LLM_E2E === "1";
 const WHITESPACE = /\s+/u;
 const WORKER = fileURLToPath(
   new URL("../../dist/backend/isolated/worker-main.js", import.meta.url),
 );
 const workerBuilt = existsSync(WORKER);
 
-function isolatedInboard(options: Omit<InboardOptions, "isolation">) {
-  const overrides: Partial<InboardDeps> = {
+function isolatedLocalLLM(options: Omit<LocalLLMOptions, "isolation">) {
+  const overrides: Partial<LocalLLMDeps> = {
     createIsolatedBackend: () => createIsolatedBackend({ execPath: "node", workerPath: WORKER }),
   };
-  return createInboardWithDeps({ ...options, isolation: "process" }, overrides);
+  return createLocalLLMWithDeps({ ...options, isolation: "process" }, overrides);
 }
 
 /** The worker is a direct child of this process, so pgrep on its command line finds it. */
@@ -39,7 +39,7 @@ function workerPids(): number[] {
 
 describe.skipIf(!(enabled && workerBuilt))("e2e: process isolation with the real model", () => {
   it("generates in the child with the same result shape as in-process", async () => {
-    const ai = isolatedInboard({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
+    const ai = isolatedLocalLLM({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
     const r = await ai.generate({
       maxTokens: 24,
       messages: [{ content: "Name one planet.", role: "user" }],
@@ -53,7 +53,7 @@ describe.skipIf(!(enabled && workerBuilt))("e2e: process isolation with the real
   }, 300_000);
 
   it("kills the child mid-generation: BACKEND_CRASHED, then a fresh child answers", async () => {
-    const ai = isolatedInboard({ model: "qwen2.5-0.5b" });
+    const ai = isolatedLocalLLM({ model: "qwen2.5-0.5b" });
     await ai.ready();
     const pending = ai
       .generate({ maxTokens: 256, prompt: "Write a long story about a river.", temperature: 0.7 })

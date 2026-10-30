@@ -1,18 +1,18 @@
 ---
-name: inboard-usage
-description: Use inboard-sdk to run a small local LLM inside a Node.js process. Covers createInboard, generate, stream, errors, and when a local model is the right choice.
+name: local-llm-usage
+description: Use local-llm to run a small local LLM inside a Node.js process. Covers createLocalLLM, generate, stream, errors, and when a local model is the right choice.
 ---
 
-# inboard-usage
+# local-llm-usage
 
-inboard-sdk runs a small quantized model in-process. There is no daemon, no API key and no port. Use it for classification, extraction, rewriting and short copy, on the user's machine or in a container. Do not use it for reasoning, facts or long-form writing. See `docs/what-tiny-models-are-good-at.md`.
+local-llm runs a small quantized model in-process. There is no daemon, no API key and no port. Use it for classification, extraction, rewriting and short copy, on the user's machine or in a container. Do not use it for reasoning, facts or long-form writing. See `docs/what-tiny-models-are-good-at.md`.
 
 ## Minimal usage
 
 ```ts
-import { createInboard, isInboardError } from "inboard-sdk";
+import { createLocalLLM, isLocalLLMError } from "local-llm";
 
-const ai = createInboard({ model: "qwen2.5-0.5b" });
+const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
 const { text, finishReason, usage } = await ai.generate({
   prompt: "In one sentence, what is a river?",
   maxTokens: 64,
@@ -24,17 +24,17 @@ await ai.unload();
 ## Rules to follow
 
 - Use a registry id (`qwen2.5-0.5b`, `qwen2.5-1.5b`, `smollm2-360m`). A custom GGUF uses `{ path }`.
-- Models download on first use. If the app must not download at runtime, pull first (`npx inboard pull qwen2.5-0.5b`) and set `offline: true` or `INBOARD_OFFLINE=1`.
+- Models download on first use. If the app must not download at runtime, pull first (`npx local-llm pull qwen2.5-0.5b`) and set `offline: true` or `LOCAL_LLM_OFFLINE=1`.
 - Pass exactly one of `prompt` or `messages`. Put instructions in `system` or a system message.
 - Set `maxTokens` for every call. The default is 256, and a short answer should not pay for more.
 - Set `temperature: 0` for repeatable output. Add `seed` to make sampling repeatable too.
-- Keep one `Inboard` per model for the life of the process. Creating one per request reloads the model.
+- Keep one `LocalLLM` per model for the life of the process. Creating one per request reloads the model.
 - Call `ai.unload()` when the process is done with the model, or the memory stays allocated.
 - Respect `maxConcurrency` (default 1) and `maxQueue` (default 64). Handle `QUEUE_FULL` with a retry or a 503.
 
 ## Errors
 
-Every error is an `InboardError` with a `code` and a `hint`. Check with `isInboardError(err)`, then branch on `err.code`:
+Every error is an `LocalLLMError` with a `code` and a `hint`. Check with `isLocalLLMError(err)`, then branch on `err.code`:
 
 - `MODEL_NOT_FOUND`: pull the model, or copy it into the cache.
 - `OUT_OF_MEMORY`: use a smaller model, or lower `contextSize` or `maxConcurrency`.

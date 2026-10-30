@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@/env.js";
-import { createInboard } from "@/index.js";
+import { createLocalLLM } from "@/index.js";
 
 /**
- * Real model, real backend. Opt-in: set INBOARD_E2E=1. Downloads the default model on first run.
+ * Real model, real backend. Opt-in: set LOCAL_LLM_E2E=1. Downloads the default model on first run.
  */
-const enabled = env.INBOARD_E2E === "1";
+const enabled = env.LOCAL_LLM_E2E === "1";
 
 describe.skipIf(!enabled)("e2e: default model", () => {
-  const ai = createInboard({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
+  const ai = createLocalLLM({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
 
   it("loads and generates text with usage and timing", async () => {
     const r = await ai.generate({
