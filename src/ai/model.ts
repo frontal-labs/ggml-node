@@ -9,8 +9,8 @@ import type {
   LanguageModelV4Usage,
   SharedV4Warning,
 } from "@ai-sdk/provider";
-import { InboardError } from "../core/errors.js";
-import type { GenerateResult, Inboard, Message, ModelId } from "../core/types.js";
+import { InboardError } from "@/core/errors.js";
+import type { GenerateResult, Inboard, Message, ModelId } from "@/core/types.js";
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.

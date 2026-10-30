@@ -1,5 +1,6 @@
-import { InboardError } from "./errors.js";
-import type { GenerateOptions, Message } from "./types.js";
+import { InboardError } from "@/core/errors.js";
+import { firstIssue, generateOptionsSchema } from "@/core/schemas.js";
+import type { GenerateOptions, Message } from "@/core/types.js";
 
 export type OverflowPolicy = NonNullable<GenerateOptions["overflow"]>;
 
@@ -22,8 +23,18 @@ export const DEFAULT_TEMPERATURE = 0.7;
  * Throws `INVALID_OPTIONS` for any input the contract does not allow.
  */
 export function normalizeRequest(options: GenerateOptions): NormalizedRequest {
-  const hasPrompt = options.prompt !== undefined;
-  const hasMessages = options.messages !== undefined;
+  const parsed = generateOptionsSchema.safeParse(options);
+  if (!parsed.success) {
+    const issue = firstIssue(parsed.error);
+    throw invalid(
+      `${issue.path}: ${issue.message}`,
+      "Check the generate options against the documented ranges.",
+    );
+  }
+  const o = parsed.data;
+
+  const hasPrompt = o.prompt !== undefined;
+  const hasMessages = o.messages !== undefined;
   if (hasPrompt === hasMessages) {
     throw invalid(
       "Pass exactly one of prompt or messages",
@@ -32,50 +43,32 @@ export function normalizeRequest(options: GenerateOptions): NormalizedRequest {
   }
 
   const conversation: Message[] = hasPrompt
-    ? [{ role: "user", content: options.prompt as string }]
-    : [...(options.messages as Message[])];
+    ? [{ role: "user", content: o.prompt as string }]
+    : [...(o.messages ?? [])];
 
   if (conversation.length === 0) {
     throw invalid("messages must not be empty", "Pass at least one message.");
   }
-  for (const m of conversation) {
-    if (typeof m.content !== "string") {
-      throw invalid(
-        `message content must be a string (role ${m.role})`,
-        "Only text content is supported in v1.",
-      );
-    }
-  }
 
-  if (options.system !== undefined) {
+  if (o.system !== undefined) {
     if (conversation[0]?.role === "system") {
       throw invalid(
         "Both system and a leading system message were given",
         "Pass the system text once.",
       );
     }
-    conversation.unshift({ role: "system", content: options.system });
-  }
-
-  const maxTokens = integerOption(options.maxTokens, DEFAULT_MAX_TOKENS, "maxTokens", 1);
-  const temperature = numberOption(options.temperature, DEFAULT_TEMPERATURE, "temperature", 0, 2);
-  const topP = optionalNumber(options.topP, "topP", 0, 1, { exclusiveMin: true });
-  const topK = optionalInteger(options.topK, "topK", 0);
-  const seed = optionalInteger(options.seed, "seed", 0);
-  const stop = options.stop;
-  if (stop?.some((s) => typeof s !== "string" || s.length === 0)) {
-    throw invalid("stop must be an array of non-empty strings", "Remove empty stop sequences.");
+    conversation.unshift({ role: "system", content: o.system });
   }
 
   return {
     messages: conversation,
-    maxTokens,
-    temperature,
-    topP,
-    topK,
-    seed,
-    stop,
-    overflow: options.overflow ?? "error",
+    maxTokens: o.maxTokens ?? DEFAULT_MAX_TOKENS,
+    temperature: o.temperature ?? DEFAULT_TEMPERATURE,
+    topP: o.topP,
+    topK: o.topK,
+    seed: o.seed,
+    stop: o.stop,
+    overflow: o.overflow ?? "error",
   };
 }
 
@@ -149,60 +142,4 @@ function overflow(tokens: number, budget: number): InboardError {
 
 function invalid(message: string, hint: string): InboardError {
   return new InboardError("INVALID_OPTIONS", message, { hint });
-}
-
-function integerOption(
-  value: number | undefined,
-  fallback: number,
-  name: string,
-  min: number,
-): number {
-  if (value === undefined) return fallback;
-  if (!Number.isInteger(value) || value < min) {
-    throw invalid(
-      `${name} must be an integer >= ${min}`,
-      `Set ${name} to a whole number of at least ${min}.`,
-    );
-  }
-  return value;
-}
-
-function numberOption(
-  value: number | undefined,
-  fallback: number,
-  name: string,
-  min: number,
-  max: number,
-): number {
-  if (value === undefined) return fallback;
-  if (!Number.isFinite(value) || value < min || value > max) {
-    throw invalid(
-      `${name} must be between ${min} and ${max}`,
-      `Set ${name} inside [${min}, ${max}].`,
-    );
-  }
-  return value;
-}
-
-function optionalNumber(
-  value: number | undefined,
-  name: string,
-  min: number,
-  max: number,
-  opts: { exclusiveMin?: boolean } = {},
-): number | undefined {
-  if (value === undefined) return undefined;
-  const belowMin = opts.exclusiveMin ? value <= min : value < min;
-  if (!Number.isFinite(value) || belowMin || value > max) {
-    throw invalid(`${name} is out of range`, `Set ${name} inside the documented range.`);
-  }
-  return value;
-}
-
-function optionalInteger(value: number | undefined, name: string, min: number): number | undefined {
-  if (value === undefined) return undefined;
-  if (!Number.isInteger(value) || value < min) {
-    throw invalid(`${name} must be an integer >= ${min}`, `Set ${name} to a whole number.`);
-  }
-  return value;
 }

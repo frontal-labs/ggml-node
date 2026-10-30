@@ -4,7 +4,7 @@ import type {
   JsonSchemaObject,
   Message,
   Usage,
-} from "../core/types.js";
+} from "@/core/types.js";
 
 /**
  * The inference backend. The core scheduler and public API only talk to this interface, so a

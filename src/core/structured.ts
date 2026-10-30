@@ -1,5 +1,5 @@
-import { InboardError } from "./errors.js";
-import type { JsonSchemaObject, Message, ZodLikeSchema } from "./types.js";
+import { InboardError } from "@/core/errors.js";
+import type { JsonSchemaObject, Message, ZodLikeSchema } from "@/core/types.js";
 
 /**
  * Structured output. A Zod schema or a plain JSON Schema is compiled into a grammar, so the model

@@ -4,8 +4,8 @@ import type {
   BackendRequest,
   BackendResult,
   ParsedOutput,
-} from "../../src/backend/types.js";
-import type { JsonSchemaObject, Message } from "../../src/core/types.js";
+} from "@/backend/types.js";
+import type { JsonSchemaObject, Message } from "@/core/types.js";
 
 export interface FakeBackendOptions {
   /** Produces the reply for a request. Default echoes the last user message. */

@@ -1,24 +1,27 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { type ModelMeta, readModelMeta } from "../backend/gguf-meta.js";
-import { createLlamaCppBackend } from "../backend/llama-cpp.js";
-import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "../backend/types.js";
-import { resolveCacheDir, resolveOffline } from "../registry/cache.js";
-import { ensureModel } from "../registry/ensure.js";
-import { MODEL_IDS, MODELS, type ModelId } from "../registry/models.js";
-import { AsyncChannel } from "./channel.js";
-import { InboardError, isInboardError } from "./errors.js";
-import { emitEvent } from "./events.js";
-import { estimateModelBytes, type MemoryReaders, nodeMemoryReaders, preflight } from "./memory.js";
-import { fitToBudget, type NormalizedRequest, normalizeRequest } from "./prompt.js";
-import { abortedError, Scheduler } from "./scheduler.js";
+import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
+import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
+import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
+import { AsyncChannel } from "@/core/channel.js";
+import { InboardError, isInboardError } from "@/core/errors.js";
+import { emitEvent } from "@/core/events.js";
+import {
+  estimateModelBytes,
+  type MemoryReaders,
+  nodeMemoryReaders,
+  preflight,
+} from "@/core/memory.js";
+import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
+import { abortedError, Scheduler } from "@/core/scheduler.js";
+import { firstIssue, inboardOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
   schemaViolation,
   withSchemaInstruction,
   zodToJsonSchema,
-} from "./structured.js";
+} from "@/core/structured.js";
 import type {
   GenerateOptions,
   GenerateResult,
@@ -30,7 +33,11 @@ import type {
   ObjectResult,
   StreamResult,
   ZodLikeSchema,
-} from "./types.js";
+} from "@/core/types.js";
+import { env as defaultEnv, type InboardEnv } from "@/env.js";
+import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
+import { ensureModel } from "@/registry/ensure.js";
+import { MODELS, type ModelId } from "@/registry/models.js";
 
 const DEFAULT_CONTEXT_CAP = 4096;
 
@@ -39,15 +46,15 @@ export interface InboardDeps {
   createBackend: () => Backend;
   readMeta: (path: string) => Promise<ModelMeta>;
   memory: MemoryReaders;
-  /** Overrides the environment for offline and cache dir resolution. Defaults to process.env. */
-  env: NodeJS.ProcessEnv;
+  /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
+  env: InboardEnv;
 }
 
 export const defaultDeps: InboardDeps = {
   createBackend: createLlamaCppBackend,
   readMeta: readModelMeta,
   memory: nodeMemoryReaders,
-  env: process.env,
+  env: defaultEnv,
 };
 
 interface Loaded {
@@ -396,39 +403,12 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
 }
 
 function validateOptions(options: InboardOptions): void {
-  if (!options || typeof options !== "object") {
-    throw new InboardError("INVALID_OPTIONS", "createInboard needs an options object", {
-      hint: 'Pass { model: "qwen2.5-0.5b" } at least.',
-    });
-  }
-  const { model } = options;
-  if (typeof model === "string") {
-    if (!(MODEL_IDS as readonly string[]).includes(model)) {
-      throw new InboardError("INVALID_OPTIONS", `Unknown model "${model}"`, {
-        hint: `Choose one of: ${MODEL_IDS.join(", ")}, or pass { path } for a custom GGUF.`,
-      });
-    }
-  } else if (!model || typeof model.path !== "string" || model.path.length === 0) {
-    throw new InboardError("INVALID_OPTIONS", "model must be a registry id or { path }", {
-      hint: 'Example: createInboard({ model: { path: "./models/custom.gguf" } })',
-    });
-  }
-  if (
-    options.maxConcurrency !== undefined &&
-    (!Number.isInteger(options.maxConcurrency) || options.maxConcurrency < 1)
-  ) {
-    throw new InboardError("INVALID_OPTIONS", "maxConcurrency must be an integer >= 1", {
-      hint: "Set maxConcurrency to 1 or more.",
-    });
-  }
-  if (
-    options.maxQueue !== undefined &&
-    (!Number.isInteger(options.maxQueue) || options.maxQueue < 0)
-  ) {
-    throw new InboardError("INVALID_OPTIONS", "maxQueue must be an integer >= 0", {
-      hint: "Set maxQueue to 0 or more.",
-    });
-  }
+  const parsed = inboardOptionsSchema.safeParse(options);
+  if (parsed.success) return;
+  const issue = firstIssue(parsed.error);
+  throw new InboardError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+    hint: "Check createInboard options against docs/api.md.",
+  });
 }
 
 async function assertExists(path: string): Promise<void> {

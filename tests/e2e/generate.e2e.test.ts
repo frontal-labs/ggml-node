@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createInboard } from "../../src/index.js";
+import { env } from "@/env.js";
+import { createInboard } from "@/index.js";
 
 /**
  * Real model, real backend. Opt-in: set INBOARD_E2E=1. Downloads the default model on first run.
  */
-const enabled = process.env.INBOARD_E2E === "1";
+const enabled = env.INBOARD_E2E === "1";
 
 describe.skipIf(!enabled)("e2e: default model", () => {
   const ai = createInboard({ model: "qwen2.5-0.5b", maxConcurrency: 1 });

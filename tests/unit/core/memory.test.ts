@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isInboardError } from "../../../src/core/errors.js";
+import { isInboardError } from "@/core/errors.js";
 import {
   availableMemoryBytes,
   estimateKvBytes,
   estimateModelBytes,
   preflight,
-} from "../../../src/core/memory.js";
+} from "@/core/memory.js";
 
 const shape = { blockCount: 24, headCountKv: 2, keyLength: 64, valueLength: 64 };
 

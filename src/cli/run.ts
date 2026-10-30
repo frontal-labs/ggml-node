@@ -1,9 +1,13 @@
 import { rm } from "node:fs/promises";
-import { InboardError, isInboardError } from "../core/errors.js";
-import { resolveCacheDir, resolveOffline } from "../registry/cache.js";
-import { downloadFile, verifyFile } from "../registry/download.js";
-import { isModelPresent, modelFilePath } from "../registry/ensure.js";
-import { MODEL_IDS, MODELS, type ModelId } from "../registry/models.js";
+import { Argument, Command, CommanderError, Option } from "commander";
+import { InboardError, isInboardError } from "@/core/errors.js";
+import { listOptionsSchema, pullOptionsSchema } from "@/core/schemas.js";
+import { env as defaultEnv, type InboardEnv } from "@/env.js";
+import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
+import { downloadFile, verifyFile } from "@/registry/download.js";
+import { isModelPresent, modelFilePath } from "@/registry/ensure.js";
+import { MODEL_IDS, MODELS, type ModelId } from "@/registry/models.js";
+import { VERSION } from "@/version.js";
 
 /** Exit codes from PLAN section 3.6. */
 export const EXIT = { OK: 0, USER_ERROR: 1, ENVIRONMENT_ERROR: 2 } as const;
@@ -13,51 +17,78 @@ export interface CliIO {
   stderr(text: string): void;
   /** Whether stderr is a terminal. Progress lines are only drawn when it is. */
   stderrIsTTY?: boolean;
-  env?: NodeJS.ProcessEnv;
+  env?: InboardEnv;
   fetch?: typeof fetch;
 }
 
-const USAGE = `Usage:
-  inboard pull <modelId> [--dir <path>]
-  inboard list [--json]
-  inboard cache path
-  inboard cache clear [<modelId>]
-
-Models: ${MODEL_IDS.join(", ")}`;
-
-class UsageError extends Error {}
-
 /** Runs one CLI command and returns its exit code. Never throws. */
 export async function runCli(argv: readonly string[], io: CliIO): Promise<number> {
-  const env = io.env ?? process.env;
+  const env = io.env ?? defaultEnv;
+  const program = createProgram(io, env);
   try {
-    const [command, ...rest] = argv;
-    switch (command) {
-      case undefined:
-      case "help":
-      case "--help":
-      case "-h":
-        io.stdout(`${USAGE}\n`);
-        return EXIT.OK;
-      case "pull":
-        return await pull(rest, io, env);
-      case "list":
-        return await list(rest, io, env);
-      case "cache":
-        return await cache(rest, io, env);
-      default:
-        throw new UsageError(`Unknown command "${command}"`);
-    }
+    await program.parseAsync([...argv], { from: "user" });
+    return EXIT.OK;
   } catch (err) {
+    if (err instanceof CommanderError) {
+      // --help and --version exit 0. Usage errors exit 1.
+      return err.exitCode === 0 ? EXIT.OK : EXIT.USER_ERROR;
+    }
     return reportError(err, io);
   }
 }
 
+/** Builds the commander program. Exported so the help text can be tested. */
+export function createProgram(io: CliIO, env: InboardEnv = defaultEnv): Command {
+  const program = new Command()
+    .name("inboard")
+    .description("Run a small LLM in-process. No daemon, no API key, no port.")
+    .version(VERSION, "-v, --version")
+    .exitOverride()
+    .configureOutput({
+      writeOut: (text) => io.stdout(text),
+      writeErr: (text) => io.stderr(text),
+    });
+
+  const modelArgument = new Argument("<modelId>", "registry model id").choices(MODEL_IDS);
+
+  program
+    .command("pull")
+    .description("download a registry model and verify its SHA-256")
+    .addArgument(modelArgument)
+    .option("--dir <path>", "cache directory to download into")
+    .action(async (modelId: ModelId, raw: { dir?: string }) => {
+      const options = pullOptionsSchema.parse(raw);
+      await pull(modelId, options.dir, io, env);
+    });
+
+  program
+    .command("list")
+    .description("list registry models, their cache state, size and license")
+    .addOption(new Option("--json", "machine-readable output"))
+    .action(async (raw: { json?: boolean }) => {
+      const options = listOptionsSchema.parse({ json: raw.json ?? false });
+      await list(options.json, io, env);
+    });
+
+  const cache = program.command("cache").description("inspect or clear the model cache");
+  cache
+    .command("path")
+    .description("print the cache directory")
+    .action(() => {
+      io.stdout(`${resolveCacheDir({ env })}\n`);
+    });
+  cache
+    .command("clear")
+    .description("delete cached model files, or only the one given")
+    .addArgument(new Argument("[modelId]", "registry model id").choices(MODEL_IDS))
+    .action(async (modelId?: ModelId) => {
+      await clearCache(modelId, io, env);
+    });
+
+  return program;
+}
+
 function reportError(err: unknown, io: CliIO): number {
-  if (err instanceof UsageError) {
-    io.stderr(`error: ${err.message}\n\n${USAGE}\n`);
-    return EXIT.USER_ERROR;
-  }
   if (isInboardError(err)) {
     io.stderr(`error [${err.code}]: ${err.message}\n  hint: ${err.hint}\n`);
     return err.code === "INVALID_OPTIONS" || err.code === "MODEL_NOT_FOUND"
@@ -69,55 +100,14 @@ function reportError(err: unknown, io: CliIO): number {
   return EXIT.ENVIRONMENT_ERROR;
 }
 
-interface ParsedArgs {
-  positionals: string[];
-  flags: Map<string, string | true>;
-}
-
-const VALUE_FLAGS = new Set(["--dir"]);
-const BOOLEAN_FLAGS = new Set(["--json"]);
-
-function parseArgs(args: readonly string[]): ParsedArgs {
-  const positionals: string[] = [];
-  const flags = new Map<string, string | true>();
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i] ?? "";
-    if (!arg.startsWith("--")) {
-      positionals.push(arg);
-      continue;
-    }
-    const eq = arg.indexOf("=");
-    const name = eq === -1 ? arg : arg.slice(0, eq);
-    if (BOOLEAN_FLAGS.has(name)) {
-      flags.set(name, true);
-    } else if (VALUE_FLAGS.has(name)) {
-      const value = eq === -1 ? args[++i] : arg.slice(eq + 1);
-      if (!value || value.startsWith("--")) throw new UsageError(`${name} needs a value`);
-      flags.set(name, value);
-    } else {
-      throw new UsageError(`Unknown option "${name}"`);
-    }
-  }
-  return { positionals, flags };
-}
-
-function requireModelId(raw: string | undefined): ModelId {
-  if (!raw) throw new UsageError("Missing <modelId>");
-  if (!(MODEL_IDS as readonly string[]).includes(raw)) {
-    throw new InboardError("INVALID_OPTIONS", `Unknown model "${raw}"`, {
-      hint: `Choose one of: ${MODEL_IDS.join(", ")}. Run "npx inboard list" for details.`,
-    });
-  }
-  return raw as ModelId;
-}
-
-async function pull(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<number> {
-  const { positionals, flags } = parseArgs(args);
-  if (positionals.length > 1) throw new UsageError("pull takes one <modelId>");
-  const id = requireModelId(positionals[0]);
-  const entry = MODELS[id];
-  const dirFlag = flags.get("--dir");
-  const dir = typeof dirFlag === "string" ? dirFlag : resolveCacheDir({ env });
+async function pull(
+  modelId: ModelId,
+  dir: string | undefined,
+  io: CliIO,
+  env: InboardEnv,
+): Promise<void> {
+  const entry = MODELS[modelId];
+  const cacheDir = dir ?? resolveCacheDir({ env });
 
   if (resolveOffline(undefined, env)) {
     throw new InboardError("INVALID_OPTIONS", "pull needs the network, but offline mode is on", {
@@ -125,13 +115,13 @@ async function pull(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<
     });
   }
 
-  const path = modelFilePath(entry, dir);
-  if (await isModelPresent(entry, dir)) {
+  const path = modelFilePath(entry, cacheDir);
+  if (await isModelPresent(entry, cacheDir)) {
     if (await verifyFile(path, entry.sha256)) {
-      io.stdout(`${id} is already downloaded and verified: ${path}\n`);
-      return EXIT.OK;
+      io.stdout(`${modelId} is already downloaded and verified: ${path}\n`);
+      return;
     }
-    io.stderr(`${id} is present but fails its checksum. Downloading it again.\n`);
+    io.stderr(`${modelId} is present but fails its checksum. Downloading it again.\n`);
     await rm(path, { force: true });
   }
 
@@ -144,7 +134,7 @@ async function pull(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<
     sha256: entry.sha256,
     sizeBytes: entry.sizeBytes,
     destPath: path,
-    fetch: io.fetch,
+    ...(io.fetch ? { fetch: io.fetch } : {}),
     onProgress: (received, total) => {
       if (!drawProgress) return;
       const pct = total === 0 ? 0 : Math.floor((received / total) * 100);
@@ -153,14 +143,10 @@ async function pull(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<
   });
   if (drawProgress) io.stderr("\n");
   io.stdout(`${path}\n`);
-  return EXIT.OK;
 }
 
-async function list(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<number> {
-  const { positionals, flags } = parseArgs(args);
-  if (positionals.length > 0) throw new UsageError("list takes no arguments");
+async function list(json: boolean, io: CliIO, env: InboardEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
-
   const rows = await Promise.all(
     MODEL_IDS.map(async (id) => {
       const entry = MODELS[id];
@@ -177,9 +163,9 @@ async function list(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<
     }),
   );
 
-  if (flags.has("--json")) {
+  if (json) {
     io.stdout(`${JSON.stringify(rows, null, 2)}\n`);
-    return EXIT.OK;
+    return;
   }
   io.stdout(
     `${"ID".padEnd(14)}${"SIZE".padEnd(10)}${"LICENSE".padEnd(14)}${"CACHED".padEnd(8)}NAME\n`,
@@ -190,32 +176,19 @@ async function list(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<
     );
   }
   io.stdout(`\nCache dir: ${dir}\n`);
-  return EXIT.OK;
 }
 
-async function cache(args: string[], io: CliIO, env: NodeJS.ProcessEnv): Promise<number> {
-  const [sub, ...rest] = args;
+async function clearCache(modelId: ModelId | undefined, io: CliIO, env: InboardEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
-
-  if (sub === "path") {
-    if (rest.length > 0) throw new UsageError("cache path takes no arguments");
-    io.stdout(`${dir}\n`);
-    return EXIT.OK;
-  }
-  if (sub === "clear") {
-    const targets: readonly ModelId[] = rest.length > 0 ? [requireModelId(rest[0])] : MODEL_IDS;
-    if (rest.length > 1) throw new UsageError("cache clear takes at most one <modelId>");
-    for (const id of targets) {
-      const path = modelFilePath(MODELS[id], dir);
-      // Only the registry's own file names are touched, along with their partial and lock files.
-      for (const file of [path, `${path}.partial`, `${path}.lock`]) {
-        await rm(file, { force: true });
-      }
-      io.stdout(`cleared ${id}\n`);
+  const targets: readonly ModelId[] = modelId ? [modelId] : MODEL_IDS;
+  for (const id of targets) {
+    const path = modelFilePath(MODELS[id], dir);
+    // Only the registry's own file names are touched, along with their partial and lock files.
+    for (const file of [path, `${path}.partial`, `${path}.lock`]) {
+      await rm(file, { force: true });
     }
-    return EXIT.OK;
+    io.stdout(`cleared ${id}\n`);
   }
-  throw new UsageError('cache needs "path" or "clear"');
 }
 
 function formatBytes(bytes: number): string {

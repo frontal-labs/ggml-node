@@ -8,9 +8,9 @@ import type {
   SharedV4Warning,
 } from "@ai-sdk/provider";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { languageModelFor, mapPrompt } from "../../../src/ai/model.js";
-import { isInboardError } from "../../../src/core/errors.js";
-import { createInboardWithDeps } from "../../../src/core/inboard.js";
+import { languageModelFor, mapPrompt } from "@/ai/model.js";
+import { isInboardError } from "@/core/errors.js";
+import { createInboardWithDeps } from "@/core/inboard.js";
 import { createFakeBackend, type FakeBackend } from "../../helpers/fake-backend.js";
 
 const SHAPE = { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 };

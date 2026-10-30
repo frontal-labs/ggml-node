@@ -2,7 +2,7 @@ import { createHash, type Hash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { InboardError } from "../core/errors.js";
+import { InboardError } from "@/core/errors.js";
 
 export interface DownloadOptions {
   url: string;

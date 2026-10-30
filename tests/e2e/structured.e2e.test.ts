@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createInboard } from "../../src/index.js";
+import { env } from "@/env.js";
+import { createInboard } from "@/index.js";
 
 /**
  * M4 acceptance: 50 classification runs and 50 nested-extraction runs with the default model.
  * Every run must parse and validate. Opt-in: INBOARD_E2E=1.
  */
-const enabled = process.env.INBOARD_E2E === "1";
+const enabled = env.INBOARD_E2E === "1";
 
 const classification = z.object({
   sentiment: z.enum(["positive", "negative", "neutral"]),

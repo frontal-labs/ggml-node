@@ -1,4 +1,4 @@
-import { InboardError } from "./errors.js";
+import { InboardError } from "@/core/errors.js";
 
 export interface SchedulerOptions {
   /** Number of backend sequences, which is also the maximum number of running requests. */

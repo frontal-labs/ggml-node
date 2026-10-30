@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
-import { InboardError } from "../core/errors.js";
-import type { KvShape } from "../core/memory.js";
+import { InboardError } from "@/core/errors.js";
+import type { KvShape } from "@/core/memory.js";
 
 export interface ModelMeta {
   sizeBytes: number;

@@ -3,8 +3,8 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isInboardError } from "../../../src/core/errors.js";
-import { downloadFile, verifyFile } from "../../../src/registry/download.js";
+import { isInboardError } from "@/core/errors.js";
+import { downloadFile, verifyFile } from "@/registry/download.js";
 import {
   type FixtureOptions,
   type FixtureServer,

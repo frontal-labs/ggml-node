@@ -1,4 +1,4 @@
-import { runCli } from "./run.js";
+import { runCli } from "@/cli/run.js";
 
 const code = await runCli(process.argv.slice(2), {
   stdout: (text) => {

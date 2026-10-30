@@ -1,6 +1,6 @@
-export type { InboardErrorCode, InboardErrorOptions } from "./core/errors.js";
-export { INBOARD_ERROR_CODES, InboardError, isInboardError } from "./core/errors.js";
-export { createInboard } from "./core/inboard.js";
+export type { InboardErrorCode, InboardErrorOptions } from "@/core/errors.js";
+export { INBOARD_ERROR_CODES, InboardError, isInboardError } from "@/core/errors.js";
+export { createInboard } from "@/core/inboard.js";
 export type {
   FinishReason,
   GenerateOptions,
@@ -19,4 +19,4 @@ export type {
   Timing,
   Usage,
   ZodLikeSchema,
-} from "./core/types.js";
+} from "@/core/types.js";

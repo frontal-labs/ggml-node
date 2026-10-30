@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveCacheDir, resolveOffline } from "../../../src/registry/cache.js";
+import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 
 describe("resolveCacheDir", () => {
   it("prefers the explicit option over the environment", () => {

@@ -1,9 +1,9 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { createInboard } from "../core/inboard.js";
-import type { Inboard, InboardOptions, ModelId } from "../core/types.js";
-import { languageModelFor } from "./model.js";
+import { languageModelFor } from "@/ai/model.js";
+import { createInboard } from "@/core/inboard.js";
+import type { Inboard, InboardOptions, ModelId } from "@/core/types.js";
 
-export type { ModelId } from "../registry/models.js";
+export type { ModelId } from "@/registry/models.js";
 
 /**
  * AI SDK provider for Inboard. Works with `generateText`, `streamText` and `generateObject` from

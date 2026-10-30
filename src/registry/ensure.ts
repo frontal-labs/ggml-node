@@ -1,9 +1,9 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { InboardError } from "../core/errors.js";
-import type { InboardEvent } from "../core/types.js";
-import { downloadFile } from "./download.js";
-import { MODELS, type ModelId } from "./models.js";
+import { InboardError } from "@/core/errors.js";
+import type { InboardEvent } from "@/core/types.js";
+import { downloadFile } from "@/registry/download.js";
+import { MODELS, type ModelId } from "@/registry/models.js";
 
 /** Licenses that need no explicit acceptance. Anything else needs `acceptLicense: true`. */
 const PERMISSIVE_LICENSES: ReadonlySet<string> = new Set(["Apache-2.0", "MIT"]);

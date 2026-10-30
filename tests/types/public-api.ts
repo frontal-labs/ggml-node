@@ -1,12 +1,7 @@
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
-import {
-  createInboard,
-  type GenerateResult,
-  type Inboard,
-  type ObjectResult,
-} from "../../src/index.js";
-import type { ModelId } from "../../src/registry/models.js";
+import { createInboard, type GenerateResult, type Inboard, type ObjectResult } from "@/index.js";
+import type { ModelId } from "@/registry/models.js";
 
 /**
  * Compile-time assertions for the Section 3 contract. `tsc` (pnpm typecheck) checks

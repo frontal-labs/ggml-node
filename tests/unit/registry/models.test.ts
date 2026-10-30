@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MODEL_IDS, MODELS } from "../../../src/registry/models.js";
-import { MODEL_SOURCES } from "../../../src/registry/sources.js";
+import { MODEL_IDS, MODELS } from "@/registry/models.js";
+import { MODEL_SOURCES } from "@/registry/sources.js";
 
 describe("registry manifest", () => {
   it("has one generated entry per source, with matching ids and files", () => {

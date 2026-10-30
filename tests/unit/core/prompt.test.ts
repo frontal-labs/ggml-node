@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { isInboardError } from "../../../src/core/errors.js";
-import { fitToBudget, normalizeRequest } from "../../../src/core/prompt.js";
-import type { Message } from "../../../src/core/types.js";
+import { isInboardError } from "@/core/errors.js";
+import { fitToBudget, normalizeRequest } from "@/core/prompt.js";
+import type { Message } from "@/core/types.js";
 
 const countWords = async (messages: Message[]) =>
   messages.reduce((n, m) => n + m.content.split(" ").length, 0);

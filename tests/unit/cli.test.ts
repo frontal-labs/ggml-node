@@ -2,8 +2,8 @@ import { mkdtemp, rm, stat, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type CliIO, EXIT, runCli } from "../../src/cli/run.js";
-import { MODELS } from "../../src/registry/models.js";
+import { type CliIO, EXIT, runCli } from "@/cli/run.js";
+import { MODELS } from "@/registry/models.js";
 
 interface Captured {
   io: CliIO;
@@ -41,19 +41,19 @@ describe("inboard CLI", () => {
   it("prints usage for help and exits 0", async () => {
     const c = capture(env());
     expect(await runCli(["help"], c.io)).toBe(EXIT.OK);
-    expect(c.out).toContain("inboard pull <modelId>");
+    expect(c.out).toContain("pull");
   });
 
   it("exits 1 for an unknown command", async () => {
     const c = capture(env());
     expect(await runCli(["frobnicate"], c.io)).toBe(EXIT.USER_ERROR);
-    expect(c.err).toContain('Unknown command "frobnicate"');
+    expect(c.err).toContain("unknown command 'frobnicate'");
   });
 
   it("exits 1 with an actionable hint for an unknown model id", async () => {
     const c = capture(env());
     expect(await runCli(["pull", "gpt-4o"], c.io)).toBe(EXIT.USER_ERROR);
-    expect(c.err).toContain("error [INVALID_OPTIONS]");
+    expect(c.err).toContain("Allowed choices");
     expect(c.err).toContain("qwen2.5-0.5b");
   });
 
@@ -66,7 +66,7 @@ describe("inboard CLI", () => {
   it("rejects unknown flags", async () => {
     const c = capture(env());
     expect(await runCli(["list", "--nope"], c.io)).toBe(EXIT.USER_ERROR);
-    expect(c.err).toContain('Unknown option "--nope"');
+    expect(c.err).toContain("unknown option '--nope'");
   });
 
   it("lists every registry model as not cached in an empty cache", async () => {

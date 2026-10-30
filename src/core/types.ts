@@ -1,5 +1,5 @@
-import type { ModelId } from "../registry/models.js";
-import type { InboardError } from "./errors.js";
+import type { InboardError } from "@/core/errors.js";
+import type { ModelId } from "@/registry/models.js";
 
 export type { ModelId };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isInboardError } from "../../../src/core/errors.js";
-import { Scheduler } from "../../../src/core/scheduler.js";
+import { isInboardError } from "@/core/errors.js";
+import { Scheduler } from "@/core/scheduler.js";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 

@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { isInboardError } from "../../../src/core/errors.js";
-import { createInboardWithDeps, type InboardDeps } from "../../../src/core/inboard.js";
+import { isInboardError } from "@/core/errors.js";
+import { createInboardWithDeps, type InboardDeps } from "@/core/inboard.js";
 import {
   assertSupportedSchema,
   withSchemaInstruction,
   zodToJsonSchema,
-} from "../../../src/core/structured.js";
-import type { Message } from "../../../src/core/types.js";
+} from "@/core/structured.js";
+import type { Message } from "@/core/types.js";
 import { createFakeBackend } from "../../helpers/fake-backend.js";
 
 const expectCode = (fn: () => unknown, code: string) => {

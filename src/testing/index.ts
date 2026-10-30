@@ -1,6 +1,6 @@
 // M1 stub: testing utilities land in M6. This module must never import node-llama-cpp.
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import type { Inboard } from "../core/types.js";
+import type { Inboard } from "@/core/types.js";
 
 export interface MockInboardOptions {
   respond?:

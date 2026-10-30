@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "ai": "^7.0.157",
-    "inboard": "workspace:*",
+    "inboard-sdk": "file:../..",
     "zod": "^4.6.7"
   },
   "devDependencies": {

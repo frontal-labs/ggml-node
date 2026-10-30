@@ -1,7 +1,5 @@
 import { stat } from "node:fs/promises";
 import type { ChatHistoryItem } from "node-llama-cpp";
-import { InboardError } from "../core/errors.js";
-import type { JsonSchemaObject, Message } from "../core/types.js";
 import type {
   Backend,
   BackendLoadOptions,
@@ -10,7 +8,9 @@ import type {
   BackendResult,
   JsonGrammar,
   ParsedOutput,
-} from "./types.js";
+} from "@/backend/types.js";
+import { InboardError } from "@/core/errors.js";
+import type { JsonSchemaObject, Message } from "@/core/types.js";
 
 /**
  * `node-llama-cpp` backend. The package is imported on first use, so importing `inboard` alone

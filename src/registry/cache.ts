@@ -1,10 +1,12 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { InboardError } from "@/core/errors.js";
+import { env as defaultEnv, flagSchema, type InboardEnv } from "@/env.js";
 
 export interface ResolveCacheDirOptions {
   /** Explicit option. Wins over the environment. */
   cacheDir?: string | undefined;
-  env?: NodeJS.ProcessEnv;
+  env?: InboardEnv;
   platform?: NodeJS.Platform;
   home?: string;
 }
@@ -18,7 +20,7 @@ export interface ResolveCacheDirOptions {
  * - Windows: `%LOCALAPPDATA%\inboard\cache`
  */
 export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
-  const env = options.env ?? process.env;
+  const env = options.env ?? defaultEnv;
   const platform = options.platform ?? process.platform;
   const home = options.home ?? homedir();
 
@@ -37,14 +39,19 @@ export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
 }
 
 /**
- * Offline is on when the option is `true`, or when `INBOARD_OFFLINE` is `1` or `true`.
- * The env var can turn offline on, but an explicit `offline: false` does not turn it off.
+ * Offline is on when the option is `true`, or when `INBOARD_OFFLINE` parses as true. The env var
+ * can turn offline on, but an explicit `offline: false` does not turn it off. A value that is not a
+ * boolean throws `INVALID_OPTIONS`, so a typo cannot silently leave the network on.
  */
-export function resolveOffline(
-  option: boolean | undefined,
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
+export function resolveOffline(option: boolean | undefined, env: InboardEnv = defaultEnv): boolean {
   if (option === true) return true;
   const raw = env.INBOARD_OFFLINE;
-  return raw === "1" || raw === "true";
+  if (raw === undefined) return false;
+  const parsed = flagSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new InboardError("INVALID_OPTIONS", `INBOARD_OFFLINE must be a boolean, got "${raw}"`, {
+      hint: "Use 1 or 0, true or false.",
+    });
+  }
+  return parsed.data;
 }

@@ -48,8 +48,10 @@ export async function startFixtureServer(
     res.writeHead(status, headers);
 
     if (isFirst && options.truncateFirstAfter !== undefined) {
-      res.write(slice.subarray(0, options.truncateFirstAfter));
-      setTimeout(() => res.destroy(), 30);
+      // Drop the connection only after the partial bytes are flushed, so the client keeps them.
+      res.write(slice.subarray(0, options.truncateFirstAfter), () => {
+        setTimeout(() => res.destroy(), 30);
+      });
       return;
     }
     if (options.stallAfter !== undefined) {

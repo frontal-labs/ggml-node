@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INBOARD_ERROR_CODES, InboardError, isInboardError } from "../../src/index.js";
+import { INBOARD_ERROR_CODES, InboardError, isInboardError } from "@/index.js";
 
 describe("InboardError", () => {
   it("carries code, hint and cause", () => {

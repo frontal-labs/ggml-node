@@ -3,7 +3,7 @@
  * Run from the repo root: `pnpm build && pnpm --filter @inboard/example-ai-sdk start`
  */
 import { generateObject, generateText, streamText } from "ai";
-import { inboard } from "inboard/ai";
+import { inboard } from "inboard-sdk/ai";
 import { z } from "zod";
 
 const model = inboard("qwen2.5-0.5b");

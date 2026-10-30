@@ -1,4 +1,4 @@
-import type { InboardEvent } from "./types.js";
+import type { InboardEvent } from "@/core/types.js";
 
 export type InboardEventListener = (event: InboardEvent) => void;
 

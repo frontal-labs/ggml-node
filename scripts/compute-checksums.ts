@@ -11,10 +11,10 @@
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readGgufFileInfo } from "node-llama-cpp";
-import { isInboardError } from "../src/core/errors.js";
-import { resolveCacheDir } from "../src/registry/cache.js";
-import { downloadFile } from "../src/registry/download.js";
-import { MODEL_SOURCES, type RegistrySource } from "../src/registry/sources.js";
+import { isInboardError } from "@/core/errors.js";
+import { resolveCacheDir } from "@/registry/cache.js";
+import { downloadFile } from "@/registry/download.js";
+import { MODEL_SOURCES, type RegistrySource } from "@/registry/sources.js";
 
 const OUTPUT = join(import.meta.dirname, "..", "src", "registry", "models.ts");
 const keep = process.argv.includes("--keep");

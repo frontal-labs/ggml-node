@@ -2,10 +2,10 @@ import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isInboardError } from "../../../src/core/errors.js";
-import { createInboardWithDeps, type InboardDeps } from "../../../src/core/inboard.js";
-import type { Inboard, InboardEvent, InboardOptions } from "../../../src/core/types.js";
-import { MODELS } from "../../../src/registry/models.js";
+import { isInboardError } from "@/core/errors.js";
+import { createInboardWithDeps, type InboardDeps } from "@/core/inboard.js";
+import type { Inboard, InboardEvent, InboardOptions } from "@/core/types.js";
+import { MODELS } from "@/registry/models.js";
 import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-backend.js";
 
 const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };

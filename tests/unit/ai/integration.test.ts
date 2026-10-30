@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { generateObject, generateText, streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { languageModelFor } from "../../../src/ai/model.js";
-import { createInboardWithDeps } from "../../../src/core/inboard.js";
+import { languageModelFor } from "@/ai/model.js";
+import { createInboardWithDeps } from "@/core/inboard.js";
 import { createFakeBackend } from "../../helpers/fake-backend.js";
 
 /**
