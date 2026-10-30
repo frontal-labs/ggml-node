@@ -1,0 +1,31 @@
+{
+  "$comment": "Source of truth for this repo's Ultracite setup. `bun run ultracite:sync` writes biome.json from it. `bun run ultracite:check` (run by `verify`) fails when biome.json has drifted.",
+  "linter": "biome",
+  "preset": "ultracite/biome/core",
+  "agents": ["claude", "cursor", "codex"],
+  "editors": ["vscode", "zed"],
+  "frameworks": [],
+  "include": ["**/*.ts", "**/*.json", "**/*.js"],
+  "exclude": ["**/dist", "**/node_modules", "**/coverage", "**/*.md"],
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "quoteStyle": "double",
+    "semicolons": "always",
+    "trailingCommas": "all"
+  },
+  "rules": {
+    "preset": "recommended",
+    "error": {
+      "suspicious/noExplicitAny": true,
+      "style/noNonNullAssertion": true,
+      "style/useConst": true
+    }
+  },
+  "assist": {
+    "organizeImports": true
+  }
+}

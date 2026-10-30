@@ -19,7 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/frontal-labs/inboard.git"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Frontal Labs",
   "sideEffects": false,
   "type": "module",
@@ -44,7 +44,7 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "workspaces": [
     "examples/*"
@@ -54,13 +54,15 @@
     "changeset": "changeset",
     "dev": "tsx src/cli/index.ts",
     "format": "biome check --write .",
-    "lint": "biome check .",
+    "lint": "biome check . && bun run ultracite:check",
     "registry:generate": "tsx scripts/compute-checksums.ts",
     "release": "bun run verify && bun run release:publish",
     "release:publish": "changeset publish",
     "test": "vitest run tests/unit",
     "test:e2e": "INBOARD_E2E=1 vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
+    "ultracite:check": "bun run scripts/sync-ultracite.ts --check",
+    "ultracite:sync": "bun run scripts/sync-ultracite.ts",
     "verify": "bun run lint && bun run typecheck && bun run test && bun run build",
     "version-packages": "changeset version"
   },
