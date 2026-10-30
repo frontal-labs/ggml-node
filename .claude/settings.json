@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bun install:*)",
+      "Bash(bun run:*)",
+      "Bash(bunx biome:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bunx vitest:*)",
+      "Bash(bunx ultracite:*)",
+      "Bash(node dist/cli/index.js:*)",
+      "Bash(node --import tsx:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(npm publish:*)",
+      "Bash(bun publish:*)",
+      "Bash(changeset publish:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/Library/Caches/inboard/**)"
+    ]
+  },
+  "env": {
+    "INBOARD_E2E": "0"
+  },
+  "includeCoAuthoredBy": true
+}

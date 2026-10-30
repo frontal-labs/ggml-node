@@ -2,6 +2,7 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
+import { createIsolatedBackend } from "@/backend/isolated/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
@@ -45,16 +46,29 @@ const DEFAULT_CONTEXT_CAP = 4096;
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
 export interface InboardDeps {
   createBackend: () => Backend;
+  /** Backend for `isolation: "process"`: the native backend in a child process. */
+  createIsolatedBackend: () => Backend;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
   env: InboardEnv;
   memory: MemoryReaders;
+  /** Whether a custom model path exists. Injected so tests and `inboard/testing` need no file. */
+  pathExists: (path: string) => Promise<boolean>;
   readMeta: (path: string) => Promise<ModelMeta>;
 }
 
 export const defaultDeps: InboardDeps = {
   createBackend: createLlamaCppBackend,
+  createIsolatedBackend: () => createIsolatedBackend(),
   env: defaultEnv,
   memory: nodeMemoryReaders,
+  pathExists: async (path) => {
+    try {
+      await stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  },
   readMeta: readModelMeta,
 };
 
@@ -85,17 +99,15 @@ export function createInboard(options: InboardOptions): Inboard {
   return createInboardWithDeps(options, defaultDeps);
 }
 
-/** `createInboard` with injectable dependencies. Used by `inboard/testing` and the unit tests. */
-export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps): Inboard {
+export function createInboardWithDeps(
+  options: InboardOptions,
+  overrides: Partial<InboardDeps> = {},
+): Inboard {
+  const deps: InboardDeps = { ...defaultDeps, ...overrides };
   validateOptions(options);
 
   const id: ModelId | "custom" = typeof options.model === "string" ? options.model : "custom";
   const isolation = options.isolation ?? "none";
-  if (isolation === "process") {
-    throw new InboardError("INVALID_OPTIONS", 'isolation: "process" is not available yet', {
-      hint: 'Use isolation: "none" for now. Process isolation lands in a later milestone.',
-    });
-  }
   const offline = resolveOffline(options.offline, deps.env);
   const cacheDir = resolveCacheDir({ cacheDir: options.cacheDir, env: deps.env });
   const maxConcurrency = options.maxConcurrency ?? 1;
@@ -113,7 +125,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
   let requestCounter = 0;
 
   async function loadModel(): Promise<Loaded> {
-    const backend = deps.createBackend();
+    const backend = isolation === "process" ? deps.createIsolatedBackend() : deps.createBackend();
     const modelLabel: ModelId | "custom" = id;
     emitEvent(onEvent, { model: modelLabel, type: "load:start" });
     const started = performance.now();
@@ -136,7 +148,11 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
       path = resolve(options.model.path);
       license = "unknown";
       contextCap = Number.POSITIVE_INFINITY;
-      await assertExists(path);
+      if (!(await deps.pathExists(path))) {
+        throw new InboardError("MODEL_NOT_FOUND", `No file at ${path}`, {
+          hint: "Check the path. Custom models must be GGUF files on disk.",
+        });
+      }
     }
 
     const meta = await deps.readMeta(path);
@@ -433,17 +449,6 @@ function validateOptions(options: InboardOptions): void {
   throw new InboardError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
     hint: "Check createInboard options against docs/api.md.",
   });
-}
-
-async function assertExists(path: string): Promise<void> {
-  try {
-    await stat(path);
-  } catch (err) {
-    throw new InboardError("MODEL_NOT_FOUND", `No file at ${path}`, {
-      cause: err,
-      hint: "Check the path. Custom models must be GGUF files on disk.",
-    });
-  }
 }
 
 /** Parses generated text with the grammar's validator, then with the Zod schema when one was given. */

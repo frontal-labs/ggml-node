@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`help > lists every command (snapshot) 1`] = `
+"Usage: inboard [options] [command]
+
+Run a small LLM in-process. No daemon, no API key, no port.
+
+Options:
+  -v, --version              output the version number
+  -h, --help                 display help for command
+
+Commands:
+  pull [options] <modelId>   download a registry model and verify its SHA-256
+  list [options]             list registry models, their cache state, size and
+                             license
+  run [options] <prompt>     generate text for a prompt, or a structured object
+                             with --json-schema
+  bench [options] [modelId]  measure load time, first token, tokens per second
+                             and peak memory
+  doctor [options]           check the platform, memory, cache, and that the
+                             backend loads
+  cache                      inspect or clear the model cache
+  help [command]             display help for command
+"
+`;

@@ -11,13 +11,13 @@ import type {
   SharedV4Warning,
 } from "@ai-sdk/provider";
 import { InboardError } from "@/core/errors.js";
-import type { GenerateResult, Inboard, Message, ModelId } from "@/core/types.js";
+import type { GenerateResult, Inboard, Message } from "@/core/types.js";
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.
  * Tests build models directly from a fake-backed Inboard through `languageModelFor`.
  */
-export function languageModelFor(modelId: ModelId, inboard: Inboard): LanguageModelV4 {
+export function languageModelFor(modelId: string, inboard: Inboard): LanguageModelV4 {
   return new InboardLanguageModel(modelId, inboard);
 }
 
@@ -211,7 +211,7 @@ class InboardLanguageModel implements LanguageModelV4 {
   readonly supportedUrls: Record<string, RegExp[]> = {};
   private readonly inboard: Inboard;
 
-  constructor(modelId: ModelId, inboard: Inboard) {
+  constructor(modelId: string, inboard: Inboard) {
     this.modelId = modelId;
     this.inboard = inboard;
   }

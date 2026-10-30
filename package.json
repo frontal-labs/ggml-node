@@ -56,7 +56,8 @@
     "format": "biome check --write .",
     "lint": "biome check .",
     "registry:generate": "tsx scripts/compute-checksums.ts",
-    "release": "bun run verify && changeset publish",
+    "release": "bun run verify && bun run release:publish",
+    "release:publish": "changeset publish",
     "test": "vitest run tests/unit",
     "test:e2e": "INBOARD_E2E=1 vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
@@ -72,6 +73,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
+    "@changesets/cli": "^2",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^5.0.5",
     "ai": "^7.0.157",

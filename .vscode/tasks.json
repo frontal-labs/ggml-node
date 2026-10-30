@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "verify",
+      "type": "shell",
+      "command": "bun run verify",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "bun run lint",
+      "problemMatcher": []
+    },
+    {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "bun run typecheck",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "test:unit",
+      "type": "shell",
+      "command": "bun run test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test:e2e (real model)",
+      "type": "shell",
+      "command": "bun run test:e2e",
+      "problemMatcher": []
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "registry:generate",
+      "type": "shell",
+      "command": "bun run registry:generate",
+      "problemMatcher": []
+    },
+    {
+      "label": "changeset",
+      "type": "shell",
+      "command": "bun run changeset",
+      "problemMatcher": []
+    }
+  ]
+}

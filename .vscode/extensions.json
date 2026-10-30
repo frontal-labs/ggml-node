@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "oven.bun-vscode",
+    "vitest.explorer",
+    "esbenp.prettier-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "editorconfig.editorconfig"
+  ]
+}

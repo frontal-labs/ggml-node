@@ -152,7 +152,7 @@ describe("object()", () => {
 
   function make(reply: string) {
     const backend = createFakeBackend({ respond: () => reply });
-    const deps: InboardDeps = {
+    const deps: Partial<InboardDeps> = {
       createBackend: () => backend,
       env: { INBOARD_CACHE_DIR: dir },
       memory: {

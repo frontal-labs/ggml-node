@@ -39,7 +39,7 @@ describe("createInboard", () => {
     depsOverride: Partial<InboardDeps> = {},
   ) {
     const backend = createFakeBackend(backendOptions);
-    const deps: InboardDeps = {
+    const deps: Partial<InboardDeps> = {
       createBackend: () => backend,
       env: { INBOARD_CACHE_DIR: dir },
       memory: {
@@ -285,13 +285,8 @@ describe("createInboard", () => {
       expect(() => make({ maxQueue: -1, model: custom() })).toThrow();
     });
 
-    it("rejects isolation: process until it is implemented", () => {
-      try {
-        make({ isolation: "process", model: custom() });
-        expect.unreachable();
-      } catch (err) {
-        expect(isInboardError(err) && err.code).toBe("INVALID_OPTIONS");
-      }
+    it("accepts isolation: process and builds the isolated backend lazily", () => {
+      expect(() => make({ isolation: "process", model: custom() })).not.toThrow();
     });
 
     it("reports MODEL_NOT_FOUND for a custom path that does not exist", async () => {

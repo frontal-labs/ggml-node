@@ -1,6 +1,14 @@
 import { rm } from "node:fs/promises";
 import { Argument, Command, CommanderError, Option } from "commander";
+import {
+  benchModel,
+  doctor,
+  doctorExitCode,
+  type InboardFactory,
+  runPrompt,
+} from "@/cli/commands.js";
 import { InboardError, isInboardError } from "@/core/errors.js";
+import { createInboard } from "@/core/inboard.js";
 import { listOptionsSchema, pullOptionsSchema } from "@/core/schemas.js";
 import { env as defaultEnv, type InboardEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
@@ -13,6 +21,8 @@ import { VERSION } from "@/version.js";
 export const EXIT = { ENVIRONMENT_ERROR: 2, OK: 0, USER_ERROR: 1 } as const;
 
 export interface CliIO {
+  /** Builds the Inboard used by run, bench and doctor. Tests inject the mock; the default is the real one. */
+  createInboard?: InboardFactory;
   env?: InboardEnv;
   fetch?: typeof fetch;
   stderr: (text: string) => void;
@@ -24,10 +34,11 @@ export interface CliIO {
 /** Runs one CLI command and returns its exit code. Never throws. */
 export async function runCli(argv: readonly string[], io: CliIO): Promise<number> {
   const env = io.env ?? defaultEnv;
-  const program = createProgram(io, env);
+  const state: CommandState = { exitCode: EXIT.OK };
+  const program = createProgram(io, env, state);
   try {
     await program.parseAsync([...argv], { from: "user" });
-    return EXIT.OK;
+    return state.exitCode;
   } catch (err) {
     if (err instanceof CommanderError) {
       // --help and --version exit 0. Usage errors exit 1.
@@ -38,7 +49,18 @@ export async function runCli(argv: readonly string[], io: CliIO): Promise<number
 }
 
 /** Builds the commander program. Exported so the help text can be tested. */
-export function createProgram(io: CliIO, env: InboardEnv = defaultEnv): Command {
+const MARKS = { fail: "FAIL", ok: "ok  ", warn: "warn" } as const;
+
+/** Set by commands that need a non-zero exit without an error, such as `doctor` with a failed check. */
+export interface CommandState {
+  exitCode: number;
+}
+
+export function createProgram(
+  io: CliIO,
+  env: InboardEnv = defaultEnv,
+  state: CommandState = { exitCode: EXIT.OK },
+): Command {
   const program = new Command()
     .name("inboard")
     .description("Run a small LLM in-process. No daemon, no API key, no port.")
@@ -68,6 +90,82 @@ export function createProgram(io: CliIO, env: InboardEnv = defaultEnv): Command 
     .action(async (raw: { json?: boolean }) => {
       const options = listOptionsSchema.parse({ json: raw.json ?? false });
       await list(options.json, io, env);
+    });
+
+  const factory: InboardFactory = io.createInboard ?? ((options) => createInboard(options));
+
+  program
+    .command("run")
+    .description("generate text for a prompt, or a structured object with --json-schema")
+    .argument("<prompt>", "the prompt to send")
+    .addOption(
+      new Option("--model <modelId>", "registry model id")
+        .choices(MODEL_IDS)
+        .default("qwen2.5-0.5b"),
+    )
+    .option("--json-schema <file>", "JSON Schema file: print a validated object")
+    .option("--json", "print the result and its metadata as JSON")
+    .action(async (prompt: string, raw: { model: string; jsonSchema?: string; json?: boolean }) => {
+      const output = await runPrompt(
+        prompt,
+        { json: raw.json ?? false, jsonSchema: raw.jsonSchema, model: raw.model },
+        factory,
+        env,
+      );
+      io.stdout(raw.json ? `${JSON.stringify(output, null, 2)}\n` : `${output.text}\n`);
+    });
+
+  program
+    .command("bench")
+    .description("measure load time, first token, tokens per second and peak memory")
+    .addArgument(
+      new Argument("[modelId]", "registry model id").choices(MODEL_IDS).default("qwen2.5-0.5b"),
+    )
+    .option("--tokens <n>", "tokens to generate", (value) => Number.parseInt(value, 10), 128)
+    .option("--json", "machine-readable output")
+    .action(async (modelId: ModelId, raw: { tokens: number; json?: boolean }) => {
+      if (!Number.isInteger(raw.tokens) || raw.tokens < 1) {
+        throw new InboardError("INVALID_OPTIONS", "--tokens must be a whole number of at least 1", {
+          hint: "Pass --tokens 128, for example.",
+        });
+      }
+      const result = await benchModel(modelId, raw.tokens, factory, env);
+      if (raw.json) {
+        io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+        return;
+      }
+      io.stdout(
+        [
+          `model            ${result.model}`,
+          `load             ${result.loadMs.toFixed(0)} ms`,
+          `first token      ${result.firstTokenMs.toFixed(0)} ms`,
+          `tokens           ${result.tokens}`,
+          `tokens/sec       ${result.tokensPerSecond.toFixed(1)}`,
+          `peak RSS         ${(result.peakRssBytes / 1024 ** 2).toFixed(0)} MB`,
+          `gpu              ${result.gpu}`,
+          "",
+        ].join("\n"),
+      );
+    });
+
+  program
+    .command("doctor")
+    .description("check the platform, memory, cache, and that the backend loads")
+    .option("--json", "machine-readable output")
+    .action(async (raw: { json?: boolean }) => {
+      const checks = await doctor(factory, env);
+      if (raw.json) {
+        io.stdout(`${JSON.stringify(checks, null, 2)}\n`);
+      } else {
+        for (const c of checks) {
+          const mark = MARKS[c.status];
+          io.stdout(`${mark}  ${c.name.padEnd(14)}${c.detail}\n`);
+          if (c.fix && c.status !== "ok") {
+            io.stdout(`      fix: ${c.fix}\n`);
+          }
+        }
+      }
+      state.exitCode = doctorExitCode(checks);
     });
 
   const cache = program.command("cache").description("inspect or clear the model cache");

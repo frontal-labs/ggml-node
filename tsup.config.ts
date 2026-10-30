@@ -28,4 +28,12 @@ export default defineConfig([
     entry: { "cli/index": "src/cli/index.ts" },
     splitting: true,
   },
+  {
+    // Forked by the host for `isolation: "process"`. It must sit next to dist/index.js.
+    ...shared,
+    clean: false,
+    dts: false,
+    entry: { "backend/isolated/worker-main": "src/backend/isolated/worker-main.ts" },
+    splitting: true,
+  },
 ]);

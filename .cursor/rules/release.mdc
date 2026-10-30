@@ -1,0 +1,9 @@
+---
+description: Versioning and publishing rules
+alwaysApply: false
+---
+
+- Any user-visible change needs a changeset: `bun run changeset`.
+- Do not publish from a local machine. The release workflow publishes from `main` with npm provenance.
+- Never publish without the owner's explicit approval.
+- Keep `VERSION` in `src/version.ts` in step with `package.json`. A test enforces it.

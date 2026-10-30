@@ -114,3 +114,64 @@ The grammar guarantees the shape. The output is then checked with the user's Zod
 ## D21: pnpm workspace (M5)
 
 `pnpm-workspace.yaml` includes the root package and `examples/*`, so examples run with `pnpm --filter <example> start`, as the plan requires. Examples import the built `dist/`, so run `pnpm build` first.
+
+## D22: Package name, repo and import paths (infrastructure)
+
+- The published package is `inboard-sdk`, as requested. Imports are `inboard-sdk`, `inboard-sdk/ai` and `inboard-sdk/testing`. The plan's `inboard` specifiers no longer apply.
+- Repository: `frontal-labs/inboard` is set in `package.json`. `gh` cannot see that repository, so it was not created or pushed to. Create it, or confirm the name, before the first release.
+- No publish has been run. The release workflow publishes from `main` with `NPM_TOKEN` and npm provenance. The first publish needs your approval.
+
+## D23: Bun instead of pnpm, and vitest kept
+
+Bun (1.3.14) is the package manager and script runner (`bun.lock`, `packageManager`, `bun run`). The published package still targets Node 20 and later, and the CLI bin runs under Node. Vitest stays as the test runner, because `expectTypeOf` compile-time checks and the mock-based tests depend on it. `bun test` has no equivalent.
+
+## D24: `zod` is a runtime dependency, and the import cost is measured
+
+`zod` moved from a peer to a regular dependency, because `src/env.ts`, `src/core/schemas.ts` and the CLI use it at runtime. A cold `import("inboard-sdk")` takes about 0.45 s on this machine, and zod classic is about 0.27 s of that. `zod/mini` loads in about 0.16 s and would cut the cost further. It is not used yet, because it changes every schema. This is a follow-up.
+
+## D25: Ultracite is the lint preset
+
+`biome.json` extends `ultracite/biome/core`, as the Ultracite CLI generates it. Ultracite is configured through Biome, not through an `ultracite.json` file, so none is created. `AGENTS.md` is Ultracite's agent guide and is imported by `CLAUDE.md`.
+
+Clearing the strict preset needed three kinds of change. Mechanical fixes went in as code changes. Structural findings are suppressed with a reason on the line or in the file header. That covers sequential awaits, the public barrel file, backend methods that return promises without awaiting, and two complexity hotspots. Each suppression names its reason.
+
+## D26: `process.env` is read in one place
+
+`src/env.ts` declares every variable the library reads, with `@t3-oss/env-core` and zod. Other modules receive the env object. A value that cannot be parsed fails loudly: `INBOARD_OFFLINE=maybe` throws `INVALID_OPTIONS` instead of meaning false.
+
+## D27: CLI on commander
+
+The CLI uses commander. Choice arguments are validated by commander, so an unknown model id is a usage error with exit code 1. Commander's wording for usage errors differs from the earlier hand-written messages. The exit codes did not change.
+
+## D28: `inboard-sdk/testing` loads no native code
+
+`createMockInboard` and `mockModel` run the real core with a deterministic backend. A test runs the entry in a child process, with a loader hook that records any resolution of `node-llama-cpp`. The hook was checked to catch a static import of that package.
+
+## D29: Process isolation
+
+`isolation: "process"` runs the native backend in a child forked from `dist/backend/isolated/worker-main.js`. The worker runs the same `Backend` interface, and the host speaks a typed JSON protocol over IPC.
+
+- A crash fails the requests in flight with `BACKEND_CRASHED`. The next request starts a new child and replays the model load.
+- After 3 restarts within 60 s the backend stays stopped, with a hint to fix the cause and restart the process.
+- `unload()` stops the child. The host also stops every child when it exits.
+- The worker exits when its parent disconnects, so a model is never left loaded in the background.
+- Grammar output is decoded and checked inside the worker, so the native grammar never crosses the process boundary.
+
+Tests cover the protocol with a fake backend, and the real-model e2e test kills the child with SIGKILL during generation.
+
+## D30: CLI `run`, `bench` and `doctor`
+
+- `run` takes a prompt, `--model`, `--json-schema <file>` and `--json`. `--model` is validated against the registry.
+- `bench [modelId] --tokens N --json` reports load time, first token, tokens per second, peak RSS and the GPU backend.
+- `doctor [--json]` checks the platform, CPU, memory, cgroup limit, cache directory, default model, and whether the backend loads and generates. A failed check exits 2 and prints a fix.
+- Each command has a snapshot or shape test, run against the mock backend.
+
+Benchmark numbers in `docs/benchmarks.md` come from one Apple M1 Max, under heavy memory pressure: swap was 12.7 GB of 13.3 GB used. Load times in that state run from 15 to 34 s and are not representative. The benchmark doc says so and gives the measurement conditions. A quiet-machine run and a 4-vCPU Linux run are still to be done.
+
+## D31: Changesets and the release workflow
+
+Versioning uses changesets (`.changesets/`). `release.yml` opens a "Version Packages" pull request on `main`, and publishes with provenance once that pull request is merged. `ci.yml` runs `bun run verify` on Ubuntu, macOS and Windows, and smoke-tests the built CLI on Node 22.
+
+## D32: Open item: the `LICENSE` file
+
+The working tree has `LICENSE` deleted and an Apache-2.0 `LICENSE.md` added. Those changes are not from this work, and the plan specifies MIT. They are left untouched and uncommitted until the owner decides the license.
