@@ -4,28 +4,20 @@ inboard runs wherever Node.js 20 or later runs and the native binary loads. Thre
 
 ## Docker
 
-Pull the model in its own layer, so rebuilds that change code do not download it again.
+The recipe is in [examples/docker](../examples/docker). It pulls the model in its own image layer, so code changes do not download it again. It installs the SDK from a packed tarball, so it works before the package is on npm.
 
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM node:22-slim AS model
-WORKDIR /models
-RUN npx --yes inboard-sdk pull qwen2.5-0.5b --dir /models
-
-FROM node:22-slim AS app
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-COPY dist ./dist
-COPY --from=model /models /models
-ENV INBOARD_CACHE_DIR=/models
-ENV INBOARD_OFFLINE=1
-CMD ["node", "dist/server.js"]
+```sh
+bun run build
+bun pm pack                      # writes inboard-sdk-<version>.tgz
+docker build -f examples/docker/Dockerfile -t inboard-example .
+docker run --rm -p 3000:3000 inboard-example
 ```
 
-- `INBOARD_OFFLINE=1` makes the container refuse to download at runtime, so a missing model fails fast instead of stalling.
-- Make sure the `dist/` folder includes the isolation worker, because `isolation: "process"` forks it. The default build does.
-- The `examples/docker` folder has a complete, working version.
+Notes:
+
+- `INBOARD_OFFLINE=1` makes the running container refuse to download. The `model` stage puts the file in the image at build time.
+- The build needs network access, to download the 491 MB model.
+- The Docker daemon was not running when this example was prepared, so it has not been built in this repository.
 
 ## Electron
 

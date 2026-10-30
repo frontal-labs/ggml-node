@@ -14,4 +14,5 @@ Run a small LLM inside your Node.js process. No daemon, no API key, no port.
 - [Deployment](./deployment.md): Docker, Electron, serverless, air-gapped machines
 - [What tiny models are good at](./what-tiny-models-are-good-at.md): honest limits and example prompts
 - [Benchmarks](./benchmarks.md): measured numbers and how they were taken
+- [Development](./development.md): working on inboard itself: scripts, layout, Ultracite, releases
 - [Troubleshooting](./troubleshooting.md): error codes and their fixes

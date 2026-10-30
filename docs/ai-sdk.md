@@ -69,7 +69,7 @@ A text stream yields deltas as they are generated. A structured response (`gener
 
 ## Abort
 
-`abortSignal` stops generation. `streamText` resolves with `finishReason: "other"` for an aborted stream.
+`abortSignal` stops generation. An aborted stream finishes with `finishReason` `"other"` (raw value `"abort"`).
 
 ## Example
 

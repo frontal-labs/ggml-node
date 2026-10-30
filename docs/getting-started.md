@@ -12,6 +12,10 @@
 npm install inboard-sdk
 ```
 
+`inboard-sdk` has no install script of its own. Its native dependency, `node-llama-cpp`, runs its own `postinstall`, which checks the native binary for your platform. Nothing downloads a model at install time.
+
+`zod` is a dependency of `inboard-sdk`. Add it to your own project as well if you write schemas: `npm install zod`.
+
 ## Pull a model
 
 The default model is `qwen2.5-0.5b` (Qwen2.5 0.5B Instruct, Q4_K_M, Apache-2.0, 491 MB). Installing the package downloads nothing. Models download on first use, or explicitly:

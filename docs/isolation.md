@@ -30,7 +30,7 @@ The child exits when its parent disconnects, so no model is left loaded in the b
 ## Trade-offs
 
 - Memory: the child holds the model, so the parent stays small. Two processes together use somewhat more than one.
-- Startup: the first request also pays the cost of starting the child (about a second on top of the model load).
+- Startup: the first request also pays for starting the child process, on top of the model load. Measure it on your target before you rely on a number.
 - Runtime: the worker runs under the same Node as the host, so the built package must be installed with its `dist/` folder.
 
 ## Diagnosing a crash

@@ -111,15 +111,15 @@ The grammar guarantees the shape. The output is then checked with the user's Zod
 
 `examples/ai-sdk` uses `generateObject`, as the plan specifies. `ai@7` marks `generateObject` deprecated (in favour of `generateText` with an output setting) and marks the `image` content part deprecated. The example still runs. Moving to the newer API is a follow-up.
 
-## D21: pnpm workspace (M5)
+## D21: Bun workspace (M5, updated)
 
-`pnpm-workspace.yaml` includes the root package and `examples/*`, so examples run with `pnpm --filter <example> start`, as the plan requires. Examples import the built `dist/`, so run `pnpm build` first.
+`package.json` declares `workspaces: ["examples/*"]`, so examples run with `bun --filter <example> start`. Examples import the built `dist/`, so run `bun run build` first. Each example depends on the SDK with `file:../..`.
 
-## D22: Package name, repo and import paths (infrastructure)
+## D22: Package name, repo and import paths
 
-- The published package is `inboard-sdk`, as requested. Imports are `inboard-sdk`, `inboard-sdk/ai` and `inboard-sdk/testing`. The plan's `inboard` specifiers no longer apply.
-- Repository: `frontal-labs/inboard` is set in `package.json`. `gh` cannot see that repository, so it was not created or pushed to. Create it, or confirm the name, before the first release.
-- No publish has been run. The release workflow publishes from `main` with `NPM_TOKEN` and npm provenance. The first publish needs your approval.
+- The published package is `inboard-sdk`. Imports are `inboard-sdk`, `inboard-sdk/ai` and `inboard-sdk/testing`. The plan's `inboard` specifiers no longer apply.
+- Repository: `frontal-labs/inboard`. The `origin` remote is set to `git@github.com:frontal-labs/inboard.git`. The repository was not visible to the account used here (GitHub returned 404), so nothing has been pushed. Create it, or grant access, before the first push.
+- No publish has been run. The release workflow publishes from `main` with `NPM_TOKEN` and npm provenance. The first publish needs approval.
 
 ## D23: Bun instead of pnpm, and vitest kept
 
@@ -172,6 +172,22 @@ Benchmark numbers in `docs/benchmarks.md` come from one Apple M1 Max, under heav
 
 Versioning uses changesets (`.changesets/`). `release.yml` opens a "Version Packages" pull request on `main`, and publishes with provenance once that pull request is merged. `ci.yml` runs `bun run verify` on Ubuntu, macOS and Windows, and smoke-tests the built CLI on Node 22.
 
-## D32: Open item: the `LICENSE` file
+## D32: License is Apache-2.0
 
-The working tree has `LICENSE` deleted and an Apache-2.0 `LICENSE.md` added. Those changes are not from this work, and the plan specifies MIT. They are left untouched and uncommitted until the owner decides the license.
+The plan specifies MIT. The owner replaced `LICENSE` with `LICENSE.md`, which is Apache-2.0, so the package is Apache-2.0. `package.json` (`license`, `files`) follows `LICENSE.md`. The MIT file is still in git history.
+
+## D33: `ultracite.json` is the source of truth for Ultracite
+
+Ultracite's CLI does not read `ultracite.json`. The file is the single record of this repo's Ultracite choices (preset, agents, editors, globs, formatter settings, rules). `scripts/sync-ultracite.ts` generates `biome.json` from it, formatted through the same Biome binary, so the output passes `biome check`. `bun run lint` runs `ultracite:check`, which fails when `biome.json` has drifted.
+
+## D34: Install scripts
+
+inboard-sdk has no install script. Its dependency `node-llama-cpp` runs its own `postinstall`, which checks the native binary for the platform. The plan's "no postinstall" rule therefore holds for this package and not for its dependency tree. The docs say so.
+
+## D35: Docker example builds from a packed tarball
+
+The image installs `inboard-sdk-<version>.tgz` from `bun pm pack`, so it builds before the package is on npm. It has not been built in this repository, because the Docker daemon was not running.
+
+## D36: Documentation matches the code
+
+Every page in `docs/`, the README, the skills, and the example READMEs were checked against the code: option defaults, error codes, CLI flags and help output, environment variables, test counts, and the Docker and install behaviour. Where a number was not measured, the page says so instead of giving one. The benchmark page keeps the conditions of its measurements.
