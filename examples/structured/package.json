@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "bun run index.ts"
+    "start": "bun run src/index.ts"
   },
   "dependencies": {
     "inboard-sdk": "file:../..",

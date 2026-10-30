@@ -18,4 +18,6 @@ createServer(async (req, res) => {
   res
     .writeHead(200, { "content-type": "application/json" })
     .end(JSON.stringify({ text: result.text }));
-}).listen(3000, () => console.log("listening on :3000"));
+}).listen(Number(process.env.PORT ?? 3000), () =>
+  console.log(`listening on :${process.env.PORT ?? 3000}`),
+);

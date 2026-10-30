@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docker:build": "docker build -t inboard-example -f Dockerfile ../..",
-    "start": "node server.mjs"
+    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t inboard-example .",
+    "start": "node src/server.mjs"
   },
   "dependencies": {
     "inboard-sdk": "file:../.."

@@ -18,7 +18,7 @@
       "request": "launch",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run"],
-      "program": "${workspaceFolder}/examples/ai-sdk/index.ts",
+      "program": "${workspaceFolder}/examples/ai-sdk/src/index.ts",
       "cwd": "${workspaceFolder}/examples/ai-sdk",
       "console": "integratedTerminal"
     },

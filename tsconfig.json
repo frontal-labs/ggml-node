@@ -18,6 +18,7 @@
     "declaration": true,
     "sourceMap": true,
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -27,7 +28,7 @@
     "src",
     "tests",
     "scripts",
-    "examples/*/index.ts",
+    "examples/*/src/*.ts",
     "tsup.config.ts",
     "vitest.config.ts"
   ],
