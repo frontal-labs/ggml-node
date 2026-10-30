@@ -3,6 +3,7 @@ import type {
   BackendLoadOptions,
   BackendRequest,
   BackendResult,
+  ParsedOutput,
 } from "../../src/backend/types.js";
 import type { JsonSchemaObject, Message } from "../../src/core/types.js";
 
@@ -26,6 +27,14 @@ export interface FakeBackend extends Backend {
   generations: number[];
   maxActive: number;
   active: number;
+}
+
+function fakeParse(text: string): ParsedOutput {
+  try {
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "invalid JSON" };
+  }
 }
 
 const wordsOf = (text: string) => text.split(/\s+/).filter(Boolean);
@@ -107,14 +116,13 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
         finishReason,
         usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
         firstTokenMs: (firstTokenAt ?? performance.now()) - started,
+        // The fake does not enforce the schema. It only decodes JSON, so tests can check the wiring.
+        parsed: request.grammar ? fakeParse(text) : undefined,
       };
     },
-    async buildJsonGrammar(_schema: JsonSchemaObject) {
+    async buildJsonGrammar(schema: JsonSchemaObject) {
       backend.grammarBuilds += 1;
-      return {
-        // The fake does not enforce the schema. It only decodes JSON, so tests can check the wiring.
-        parse: (text: string) => JSON.parse(text) as unknown,
-      };
+      return { key: JSON.stringify(schema) };
     },
     async resetSequence(sequence: number) {
       backend.resets.push(sequence);

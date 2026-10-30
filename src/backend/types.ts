@@ -19,12 +19,15 @@ export interface BackendLoadOptions {
 }
 
 /**
- * A grammar that constrains generation to one JSON Schema. `parse` decodes the generated text
- * and checks it against the schema. The native grammar is kept by the backend, not exposed here.
+ * Handle for a grammar that constrains generation to one JSON Schema. The backend keeps the
+ * native grammar under `key`, so the handle can cross a process boundary.
  */
 export interface JsonGrammar {
-  parse(text: string): unknown;
+  readonly key: string;
 }
+
+/** Result of checking generated text against the grammar's schema. */
+export type ParsedOutput = { ok: true; value: unknown } | { ok: false; message: string };
 
 export interface BackendRequest {
   messages: Message[];
@@ -41,6 +44,8 @@ export interface BackendRequest {
 
 export interface BackendResult {
   text: string;
+  /** Set when the request used a grammar. The backend decodes and validates the text itself. */
+  parsed?: ParsedOutput | undefined;
   finishReason: FinishReason;
   usage: Usage;
   /** Time from the start of generation to the first generated token, in ms. */

@@ -2,7 +2,7 @@ import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "../backend/gguf-meta.js";
 import { createLlamaCppBackend } from "../backend/llama-cpp.js";
-import type { Backend, BackendRequest, BackendResult, JsonGrammar } from "../backend/types.js";
+import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "../backend/types.js";
 import { resolveCacheDir, resolveOffline } from "../registry/cache.js";
 import { ensureModel } from "../registry/ensure.js";
 import { MODEL_IDS, MODELS, type ModelId } from "../registry/models.js";
@@ -68,7 +68,8 @@ interface RunSpec {
 
 interface RunOutcome {
   result: GenerateResult;
-  grammar: JsonGrammar | undefined;
+  /** Structured output as checked by the backend. Set only when the request used a grammar. */
+  parsed: ParsedOutput | undefined;
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
@@ -257,7 +258,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
         tokensPerSecond: outcome.usage.outputTokens / (genMs / 1000),
       },
     };
-    return { result, grammar };
+    return { result, parsed: outcome.parsed };
   }
 
   async function generate(opts: GenerateOptions): Promise<GenerateResult> {
@@ -283,7 +284,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
       assertSupportedSchema(jsonSchema);
 
       const req = normalizeRequest(genOpts);
-      const { result, grammar } = await runRequest({
+      const { result, parsed } = await runRequest({
         req,
         requestId,
         signal: genOpts.signal,
@@ -291,9 +292,8 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
         ...(schemaName !== undefined ? { schemaName } : {}),
       });
       if (result.finishReason === "abort") throw abortedError();
-      if (!grammar) throw schemaViolation("no grammar was built");
 
-      const value = parseStructured(grammar, result.text, zodSchema);
+      const value = checkStructured(parsed, zodSchema);
       emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
@@ -443,17 +443,13 @@ async function assertExists(path: string): Promise<void> {
 }
 
 /** Parses generated text with the grammar's validator, then with the Zod schema when one was given. */
-function parseStructured(
-  grammar: JsonGrammar,
-  text: string,
+function checkStructured(
+  parsed: ParsedOutput | undefined,
   zodSchema: ZodLikeSchema | undefined,
 ): unknown {
-  let value: unknown;
-  try {
-    value = grammar.parse(text);
-  } catch (err) {
-    throw schemaViolation(err instanceof Error ? err.message : "invalid JSON", err);
-  }
+  if (!parsed) throw schemaViolation("the backend returned no structured output");
+  if (!parsed.ok) throw schemaViolation(parsed.message);
+  const value = parsed.value;
   if (!zodSchema) return value;
 
   const parser = zodSchema as unknown as {
