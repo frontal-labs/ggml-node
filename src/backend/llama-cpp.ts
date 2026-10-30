@@ -1,13 +1,14 @@
 import { stat } from "node:fs/promises";
-import type { ChatHistoryItem } from "node-llama-cpp";
+import type { ChatHistoryItem, LlamaGrammar } from "node-llama-cpp";
 import { InboardError } from "../core/errors.js";
-import type { Message } from "../core/types.js";
+import type { JsonSchemaObject, Message } from "../core/types.js";
 import type {
   Backend,
   BackendLoadOptions,
   BackendLoadResult,
   BackendRequest,
   BackendResult,
+  JsonGrammar,
 } from "./types.js";
 
 /**
@@ -34,8 +35,13 @@ interface Loaded {
   wrapper: ChatWrapper;
 }
 
+/** Native grammars, keyed by the wrapper that `buildJsonGrammar` returns. */
+const nativeGrammars = new WeakMap<JsonGrammar, LlamaGrammar>();
+const MAX_CACHED_GRAMMARS = 16;
+
 export function createLlamaCppBackend(): Backend {
   let loaded: Loaded | undefined;
+  const grammarCache = new Map<string, JsonGrammar>();
 
   function state(): Loaded {
     if (!loaded) {
@@ -135,6 +141,7 @@ export function createLlamaCppBackend(): Backend {
           ...(request.seed !== undefined ? { seed: request.seed } : {}),
           ...(request.stop?.length ? { customStopTriggers: request.stop } : {}),
           ...(request.signal ? { signal: request.signal } : {}),
+          ...(request.grammar ? { grammar: grammarFor(request.grammar) } : {}),
           stopOnAbortSignal: true,
           onTextChunk: (text) => {
             firstTokenAt ??= performance.now();
@@ -160,6 +167,40 @@ export function createLlamaCppBackend(): Backend {
       }
     },
 
+    async buildJsonGrammar(schema: JsonSchemaObject): Promise<JsonGrammar> {
+      const key = JSON.stringify(schema);
+      const cached = grammarCache.get(key);
+      if (cached) return cached;
+
+      const { llama } = state();
+      let native: Awaited<ReturnType<Llama["createGrammarForJsonSchema"]>>;
+      try {
+        native = await llama.createGrammarForJsonSchema(
+          schema as Parameters<Llama["createGrammarForJsonSchema"]>[0],
+        );
+      } catch (err) {
+        throw new InboardError(
+          "INVALID_OPTIONS",
+          "The JSON Schema could not be compiled into a grammar",
+          {
+            hint: "Check the schema against the supported subset in docs/structured-output.md.",
+            cause: err,
+          },
+        );
+      }
+
+      const wrapper: JsonGrammar = {
+        parse: (text: string) => native.parse(text),
+      };
+      nativeGrammars.set(wrapper, native);
+      if (grammarCache.size >= MAX_CACHED_GRAMMARS) {
+        const oldest = grammarCache.keys().next().value;
+        if (oldest !== undefined) grammarCache.delete(oldest);
+      }
+      grammarCache.set(key, wrapper);
+      return wrapper;
+    },
+
     async resetSequence(index: number): Promise<void> {
       await sequence(index).clearHistory();
     },
@@ -167,6 +208,7 @@ export function createLlamaCppBackend(): Backend {
     async unload(): Promise<void> {
       const current = loaded;
       loaded = undefined;
+      grammarCache.clear();
       if (!current) return;
       await current.context.dispose();
       await current.model.dispose();
@@ -181,4 +223,14 @@ function toHistory(messages: Message[]): ChatHistoryItem[] {
     if (m.role === "user") return { type: "user", text: m.content };
     return { type: "model", response: [m.content] };
   });
+}
+
+function grammarFor(grammar: JsonGrammar): LlamaGrammar {
+  const native = nativeGrammars.get(grammar);
+  if (!native) {
+    throw new InboardError("INVALID_OPTIONS", "The grammar was not built by this backend", {
+      hint: "Build grammars with buildJsonGrammar().",
+    });
+  }
+  return native;
 }

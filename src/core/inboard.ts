@@ -2,7 +2,7 @@ import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "../backend/gguf-meta.js";
 import { createLlamaCppBackend } from "../backend/llama-cpp.js";
-import type { Backend, BackendRequest, BackendResult } from "../backend/types.js";
+import type { Backend, BackendRequest, BackendResult, JsonGrammar } from "../backend/types.js";
 import { resolveCacheDir, resolveOffline } from "../registry/cache.js";
 import { ensureModel } from "../registry/ensure.js";
 import { MODEL_IDS, MODELS, type ModelId } from "../registry/models.js";
@@ -10,17 +10,26 @@ import { AsyncChannel } from "./channel.js";
 import { InboardError, isInboardError } from "./errors.js";
 import { emitEvent } from "./events.js";
 import { estimateModelBytes, type MemoryReaders, nodeMemoryReaders, preflight } from "./memory.js";
-import { fitToBudget, normalizeRequest } from "./prompt.js";
+import { fitToBudget, type NormalizedRequest, normalizeRequest } from "./prompt.js";
 import { abortedError, Scheduler } from "./scheduler.js";
+import {
+  assertSupportedSchema,
+  isZodLike,
+  schemaViolation,
+  withSchemaInstruction,
+  zodToJsonSchema,
+} from "./structured.js";
 import type {
   GenerateOptions,
   GenerateResult,
   Inboard,
   InboardOptions,
+  JsonSchemaObject,
   ModelInfo,
   ObjectOptions,
   ObjectResult,
   StreamResult,
+  ZodLikeSchema,
 } from "./types.js";
 
 const DEFAULT_CONTEXT_CAP = 4096;
@@ -47,9 +56,19 @@ interface Loaded {
   scheduler: Scheduler;
 }
 
+interface RunSpec {
+  req: NormalizedRequest;
+  requestId: string;
+  signal?: AbortSignal | undefined;
+  onDelta?: ((text: string) => void) | undefined;
+  /** When set, generation is constrained to this schema and the output is parsed against it. */
+  jsonSchema?: JsonSchemaObject | undefined;
+  schemaName?: string | undefined;
+}
+
 interface RunOutcome {
   result: GenerateResult;
-  queueMs: number;
+  grammar: JsonGrammar | undefined;
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
@@ -174,27 +193,26 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     return { state, loadMs: performance.now() - started };
   }
 
-  async function runRequest(
-    opts: GenerateOptions,
-    onDelta: ((text: string) => void) | undefined,
-    signal: AbortSignal | undefined,
-    requestId: string,
-  ): Promise<RunOutcome> {
+  async function runRequest(spec: RunSpec): Promise<RunOutcome> {
+    const { req, requestId, signal, onDelta, jsonSchema, schemaName } = spec;
     const started = performance.now();
-    const req = normalizeRequest(opts);
-    const { state } = await ensureLoaded();
+    const { state, loadMs } = await ensureLoaded();
     const { backend, scheduler, info } = state;
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
       throw new InboardError(
         "INVALID_OPTIONS",
         `maxTokens (${req.maxTokens}) must be less than contextSize (${info.contextSize})`,
-        {
-          hint: "Lower maxTokens or raise contextSize.",
-        },
+        { hint: "Lower maxTokens or raise contextSize." },
       );
     }
-    const messages = await fitToBudget(req.messages, budget, req.overflow, (m) =>
+
+    const grammar = jsonSchema ? await backend.buildJsonGrammar(jsonSchema) : undefined;
+    const withInstruction =
+      jsonSchema !== undefined
+        ? withSchemaInstruction(req.messages, jsonSchema, schemaName)
+        : req.messages;
+    const messages = await fitToBudget(withInstruction, budget, req.overflow, (m) =>
       backend.countPromptTokens(m),
     );
 
@@ -215,6 +233,7 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
         ...(req.seed !== undefined ? { seed: req.seed } : {}),
         ...(req.stop !== undefined ? { stop: req.stop } : {}),
         ...(signal ? { signal } : {}),
+        ...(grammar ? { grammar } : {}),
       };
       outcome = await backend.generate(lease.index, request, (text) => onDelta?.(text));
     } catch (err) {
@@ -232,24 +251,52 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
       usage: outcome.usage,
       timing: {
         queueMs: lease.queueMs,
-        loadMs: 0,
+        loadMs,
         firstTokenMs: outcome.firstTokenMs,
-        totalMs,
+        totalMs: totalMs + loadMs,
         tokensPerSecond: outcome.usage.outputTokens / (genMs / 1000),
       },
     };
-    return { result, queueMs: lease.queueMs };
+    return { result, grammar };
   }
 
   async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     const requestId = nextId();
     try {
-      const { result } = await runRequest(opts, undefined, opts.signal, requestId);
-      if (result.finishReason === "abort") {
-        throw abortedError();
-      }
+      const req = normalizeRequest(opts);
+      const { result } = await runRequest({ req, requestId, signal: opts.signal });
+      if (result.finishReason === "abort") throw abortedError();
       emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
       return result;
+    } catch (err) {
+      emitEvent(onEvent, { type: "request:error", id: requestId, error: toInboardError(err) });
+      throw err;
+    }
+  }
+
+  async function object(opts: ObjectOptions<unknown>): Promise<ObjectResult<unknown>> {
+    const requestId = nextId();
+    try {
+      const { schema, schemaName, ...genOpts } = opts;
+      const zodSchema = isZodLike(schema) ? schema : undefined;
+      const jsonSchema = zodSchema ? await zodToJsonSchema(zodSchema) : asJsonSchemaObject(schema);
+      assertSupportedSchema(jsonSchema);
+
+      const req = normalizeRequest(genOpts);
+      const { result, grammar } = await runRequest({
+        req,
+        requestId,
+        signal: genOpts.signal,
+        jsonSchema,
+        ...(schemaName !== undefined ? { schemaName } : {}),
+      });
+      if (result.finishReason === "abort") throw abortedError();
+      if (!grammar) throw schemaViolation("no grammar was built");
+
+      const value = parseStructured(grammar, result.text, zodSchema);
+      emitEvent(onEvent, { type: "request:done", id: requestId, result: withoutText(result) });
+      const { text: raw, ...rest } = result;
+      return { ...rest, object: value, raw };
     } catch (err) {
       emitEvent(onEvent, { type: "request:error", id: requestId, error: toInboardError(err) });
       throw err;
@@ -264,7 +311,13 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
     else opts.signal?.addEventListener("abort", forward, { once: true });
 
     const chunks = new AsyncChannel<string>();
-    const result = runRequest(opts, (text) => chunks.push(text), controller.signal, requestId).then(
+    const result = (async () =>
+      runRequest({
+        req: normalizeRequest(opts),
+        requestId,
+        signal: controller.signal,
+        onDelta: (text) => chunks.push(text),
+      }))().then(
       ({ result }) => {
         chunks.close();
         if (result.finishReason !== "abort") {
@@ -302,12 +355,6 @@ export function createInboardWithDeps(options: InboardOptions, deps: InboardDeps
       usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
       timing: { queueMs: 0, loadMs: 0, firstTokenMs: 0, totalMs: 0, tokensPerSecond: 0 },
     };
-  }
-
-  async function object(_opts: ObjectOptions<unknown>): Promise<ObjectResult<unknown>> {
-    throw new InboardError("INVALID_OPTIONS", "object() is not available yet", {
-      hint: "Structured output lands in a later milestone. Use generate() for now.",
-    });
   }
 
   function nextId(): string {
@@ -393,6 +440,44 @@ async function assertExists(path: string): Promise<void> {
       cause: err,
     });
   }
+}
+
+/** Parses generated text with the grammar's validator, then with the Zod schema when one was given. */
+function parseStructured(
+  grammar: JsonGrammar,
+  text: string,
+  zodSchema: ZodLikeSchema | undefined,
+): unknown {
+  let value: unknown;
+  try {
+    value = grammar.parse(text);
+  } catch (err) {
+    throw schemaViolation(err instanceof Error ? err.message : "invalid JSON", err);
+  }
+  if (!zodSchema) return value;
+
+  const parser = zodSchema as unknown as {
+    safeParse(
+      input: unknown,
+    ): { success: true; data: unknown } | { success: false; error: { message: string } };
+  };
+  const checked = parser.safeParse(value);
+  if (!checked.success) throw schemaViolation(checked.error.message);
+  return checked.data;
+}
+
+/** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */
+function asJsonSchemaObject(schema: unknown): JsonSchemaObject {
+  if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
+    throw new InboardError(
+      "INVALID_OPTIONS",
+      "schema must be a Zod schema or a JSON Schema object",
+      {
+        hint: 'Example: { type: "object", properties: { label: { type: "string" } } }',
+      },
+    );
+  }
+  return schema as JsonSchemaObject;
 }
 
 function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {

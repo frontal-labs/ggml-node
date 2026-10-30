@@ -1,4 +1,10 @@
-import type { FinishReason, GenerateOptions, Message, Usage } from "../core/types.js";
+import type {
+  FinishReason,
+  GenerateOptions,
+  JsonSchemaObject,
+  Message,
+  Usage,
+} from "../core/types.js";
 
 /**
  * The inference backend. The core scheduler and public API only talk to this interface, so a
@@ -12,6 +18,14 @@ export interface BackendLoadOptions {
   gpu: "auto" | false;
 }
 
+/**
+ * A grammar that constrains generation to one JSON Schema. `parse` decodes the generated text
+ * and checks it against the schema. The native grammar is kept by the backend, not exposed here.
+ */
+export interface JsonGrammar {
+  parse(text: string): unknown;
+}
+
 export interface BackendRequest {
   messages: Message[];
   maxTokens: number;
@@ -21,6 +35,8 @@ export interface BackendRequest {
   seed?: number | undefined;
   stop?: string[] | undefined;
   signal?: AbortSignal | undefined;
+  /** When set, generation can only produce text that matches this grammar. */
+  grammar?: JsonGrammar | undefined;
 }
 
 export interface BackendResult {
@@ -43,6 +59,8 @@ export interface BackendLoadResult {
 
 export interface Backend {
   load(options: BackendLoadOptions): Promise<BackendLoadResult>;
+  /** Builds (or reuses) a grammar for a JSON Schema. Schemas must already pass the supported-subset check. */
+  buildJsonGrammar(schema: JsonSchemaObject): Promise<JsonGrammar>;
   /** Token count for a plain string, without any chat template. */
   countTokens(text: string): Promise<number>;
   /** Exact prompt token count for a message list, including the model's chat template. */

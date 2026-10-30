@@ -69,7 +69,10 @@ describe("createInboard", () => {
       expect(r.usage.outputTokens).toBe(3);
       expect(r.usage.totalTokens).toBe(r.usage.inputTokens + r.usage.outputTokens);
       expect(r.timing.totalMs).toBeGreaterThanOrEqual(0);
-      expect(r.timing.loadMs).toBe(0);
+      // The first call loads the model, so it reports a load time. A later call reports none.
+      expect(r.timing.loadMs).toBeGreaterThan(0);
+      const again = await ai.generate({ prompt: "again" });
+      expect(again.timing.loadMs).toBe(0);
     });
 
     it("loads once, even with concurrent calls", async () => {

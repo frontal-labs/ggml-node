@@ -4,7 +4,7 @@ import type {
   BackendRequest,
   BackendResult,
 } from "../../src/backend/types.js";
-import type { Message } from "../../src/core/types.js";
+import type { JsonSchemaObject, Message } from "../../src/core/types.js";
 
 export interface FakeBackendOptions {
   /** Produces the reply for a request. Default echoes the last user message. */
@@ -21,6 +21,7 @@ export interface FakeBackendOptions {
 export interface FakeBackend extends Backend {
   loads: number;
   unloads: number;
+  grammarBuilds: number;
   resets: number[];
   generations: number[];
   maxActive: number;
@@ -41,6 +42,7 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
   const backend: FakeBackend = {
     loads: 0,
     unloads: 0,
+    grammarBuilds: 0,
     resets: [],
     generations: [],
     maxActive: 0,
@@ -105,6 +107,13 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
         finishReason,
         usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
         firstTokenMs: (firstTokenAt ?? performance.now()) - started,
+      };
+    },
+    async buildJsonGrammar(_schema: JsonSchemaObject) {
+      backend.grammarBuilds += 1;
+      return {
+        // The fake does not enforce the schema. It only decodes JSON, so tests can check the wiring.
+        parse: (text: string) => JSON.parse(text) as unknown,
       };
     },
     async resetSequence(sequence: number) {

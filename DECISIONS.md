@@ -79,3 +79,20 @@ node-llama-cpp prints a warning for the `</s>` token in the Qwen 2.5 GGUF metada
 ## D15: Coverage target (M3)
 
 Unit-suite line coverage over `src/core`, `src/registry`, and `src/ai` is 89.7%, above the 85% target. The `src/ai` module is still a stub, so its lines are not yet covered; that number will change when M5 lands.
+
+## D16: Structured output rejects what the grammar cannot enforce (M4)
+
+Keywords outside the grammar builder's subset (for example `minimum`, `pattern`, `multipleOf`, or `format: "email"`) throw `INVALID_OPTIONS` at call time, naming the keyword and its path. They are never silently dropped. The same applies to a `$ref` that does not point into `#/$defs/`.
+
+Zod is converted with Zod's own `toJSONSchema` (`io: "output"`). Two adjustments:
+
+- `anyOf` becomes `oneOf`, which the grammar builder supports. Zod uses it for nullable and union types.
+- The safe-integer bounds Zod adds to every `integer` (`-(2^53-1)` to `2^53-1`) are dropped. Every JS integer already lies inside them, so they restrict nothing. Any bound the user wrote (`.min(0)`) is kept and rejected, as above.
+
+## D17: Zod output is validated after the grammar parse (M4)
+
+The grammar guarantees the shape. The output is then checked with the user's Zod schema, and `object` returns the parsed value (`safeParse(...).data`) with any transforms applied. A failure is `SCHEMA_VIOLATION`. A plain JSON Schema is checked by the grammar's own validator instead.
+
+## D18: Structured-output acceptance (M4)
+
+`test/e2e/structured.e2e.test.ts` runs 50 classification and 50 nested-extraction calls against the default model (`INBOARD_E2E=1`). All 100 parse and validate. Run time was about 65 s on this machine.
