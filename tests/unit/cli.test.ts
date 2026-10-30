@@ -25,18 +25,18 @@ function capture(env: NodeJS.ProcessEnv): Captured {
   return captured;
 }
 
-describe("local-llm CLI", () => {
+describe("tiny-llm CLI", () => {
   let cacheDir: string;
 
   beforeEach(async () => {
-    cacheDir = await mkdtemp(join(tmpdir(), "local-llm-cli-"));
+    cacheDir = await mkdtemp(join(tmpdir(), "tiny-llm-cli-"));
   });
 
   afterEach(async () => {
     await rm(cacheDir, { force: true, recursive: true });
   });
 
-  const env = () => ({ LOCAL_LLM_CACHE_DIR: cacheDir }) as NodeJS.ProcessEnv;
+  const env = () => ({ TINY_LLM_CACHE_DIR: cacheDir }) as NodeJS.ProcessEnv;
 
   it("prints usage for help and exits 0", async () => {
     const c = capture(env());
@@ -58,7 +58,7 @@ describe("local-llm CLI", () => {
   });
 
   it("refuses pull in offline mode with exit 1", async () => {
-    const c = capture({ ...env(), LOCAL_LLM_OFFLINE: "1" });
+    const c = capture({ ...env(), TINY_LLM_OFFLINE: "1" });
     expect(await runCli(["pull", "qwen2.5-0.5b"], c.io)).toBe(EXIT.USER_ERROR);
     expect(c.err).toContain("offline mode is on");
   });

@@ -1,12 +1,12 @@
 /**
- * LocalLLM with the AI SDK: generateText, streamText and generateObject.
- * Run from the repo root: `bun run build && bun --filter @local-llm/example-ai-sdk start`
+ * TinyLLM with the AI SDK: generateText, streamText and generateObject.
+ * Run from the repo root: `bun run build && bun --filter @tiny-llm/example-ai-sdk start`
  */
 import { generateObject, generateText, streamText } from "ai";
-import { localLLM } from "local-llm/ai";
+import { tinyLLM } from "tiny-llm/ai";
 import { z } from "zod";
 
-const model = localLLM("qwen2.5-0.5b");
+const model = tinyLLM("qwen2.5-0.5b");
 
 const text = await generateText({
   maxOutputTokens: 48,

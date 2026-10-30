@@ -1,18 +1,18 @@
 ---
-name: local-llm-operations
-description: Operate local-llm on a real machine or in a container. Covers pulling and verifying models, the doctor and bench commands, air-gapped installs, Docker and Electron, and reading the CLI exit codes.
+name: tiny-llm-operations
+description: Operate tiny-llm on a real machine or in a container. Covers pulling and verifying models, the doctor and bench commands, air-gapped installs, Docker and Electron, and reading the CLI exit codes.
 ---
 
-# local-llm-operations
+# tiny-llm-operations
 
 ## Commands
 
 ```sh
-npx local-llm pull qwen2.5-0.5b          # download and verify (resumes if interrupted)
-npx local-llm list                       # cache state and licenses
-npx local-llm doctor                     # platform, memory, cache, and a backend check
-npx local-llm bench qwen2.5-0.5b --tokens 128
-npx local-llm cache path
+npx tiny-llm pull qwen2.5-0.5b          # download and verify (resumes if interrupted)
+npx tiny-llm list                       # cache state and licenses
+npx tiny-llm doctor                     # platform, memory, cache, and a backend check
+npx tiny-llm bench qwen2.5-0.5b --tokens 128
+npx tiny-llm cache path
 ```
 
 Exit codes: `0` success, `1` usage error, `2` environment error or a failed `doctor` check.

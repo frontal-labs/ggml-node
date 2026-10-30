@@ -1,17 +1,17 @@
 # CLI
 
-Install the package, then run `npx local-llm`, or `bunx local-llm` in a Bun project.
+Install the package, then run `npx tiny-llm`, or `bunx tiny-llm` in a Bun project.
 
 ```text
-local-llm pull <modelId> [--dir <path>]     download and verify a model
-local-llm list [--json]                     models, cache state, size and license
-local-llm run <prompt> [--model <id>] [--json-schema <file>] [--json]
-local-llm bench [modelId] [--tokens <n>] [--json]
-local-llm doctor [--json]                   platform, memory, cache, and a backend check
-local-llm cache path                        print the cache directory
-local-llm cache clear [<modelId>]           delete cached files for one model or all
-local-llm --version
-local-llm --help
+tiny-llm pull <modelId> [--dir <path>]     download and verify a model
+tiny-llm list [--json]                     models, cache state, size and license
+tiny-llm run <prompt> [--model <id>] [--json-schema <file>] [--json]
+tiny-llm bench [modelId] [--tokens <n>] [--json]
+tiny-llm doctor [--json]                   platform, memory, cache, and a backend check
+tiny-llm cache path                        print the cache directory
+tiny-llm cache clear [<modelId>]           delete cached files for one model or all
+tiny-llm --version
+tiny-llm --help
 ```
 
 ## Exit codes
@@ -35,8 +35,8 @@ A table of the registry: id, size, license, whether it is cached, and the cache 
 Generates one response. `--json-schema <file>` reads a JSON Schema file and prints a validated object. `--json` prints the result with usage and timing.
 
 ```sh
-npx local-llm run "What is a river?"
-npx local-llm run "Extract: Alex, 34, Lisbon" --json-schema person.schema.json
+npx tiny-llm run "What is a river?"
+npx tiny-llm run "Extract: Alex, 34, Lisbon" --json-schema person.schema.json
 ```
 
 ## `bench`
@@ -45,7 +45,7 @@ Measures a model on this machine: load time, time to first token, tokens per sec
 
 ## `doctor`
 
-Checks what local-llm needs, and says how to fix each problem:
+Checks what tiny-llm needs, and says how to fix each problem:
 
 - platform, CPU and Node version
 - available memory, and any container limit

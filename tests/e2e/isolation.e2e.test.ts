@@ -3,26 +3,26 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createIsolatedBackend } from "@/backend/isolated/host.js";
-import { createLocalLLMWithDeps, type LocalLLMDeps } from "@/core/local-llm.js";
-import type { LocalLLMOptions } from "@/core/types.js";
+import { createTinyLLMWithDeps, type TinyLLMDeps } from "@/core/tiny-llm.js";
+import type { TinyLLMOptions } from "@/core/types.js";
 import { env } from "@/env.js";
 
 /**
  * Real model in a child process, using the built worker that the published package forks.
- * Needs `bun run build` first. Opt-in: LOCAL_LLM_E2E=1.
+ * Needs `bun run build` first. Opt-in: TINY_LLM_E2E=1.
  */
-const enabled = env.LOCAL_LLM_E2E === "1";
+const enabled = env.TINY_LLM_E2E === "1";
 const WHITESPACE = /\s+/u;
 const WORKER = fileURLToPath(
   new URL("../../dist/backend/isolated/worker-main.js", import.meta.url),
 );
 const workerBuilt = existsSync(WORKER);
 
-function isolatedLocalLLM(options: Omit<LocalLLMOptions, "isolation">) {
-  const overrides: Partial<LocalLLMDeps> = {
+function isolatedLocalLLM(options: Omit<TinyLLMOptions, "isolation">) {
+  const overrides: Partial<TinyLLMDeps> = {
     createIsolatedBackend: () => createIsolatedBackend({ execPath: "node", workerPath: WORKER }),
   };
-  return createLocalLLMWithDeps({ ...options, isolation: "process" }, overrides);
+  return createTinyLLMWithDeps({ ...options, isolation: "process" }, overrides);
 }
 
 /** The worker is a direct child of this process, so pgrep on its command line finds it. */

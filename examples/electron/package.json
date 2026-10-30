@@ -1,5 +1,5 @@
 {
-  "name": "@local-llm/example-electron",
+  "name": "@tiny-llm/example-electron",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,6 @@
     "start": "electron ."
   },
   "dependencies": {
-    "local-llm": "file:../.."
+    "tiny-llm": "file:../.."
   }
 }

@@ -1,13 +1,13 @@
 # AI SDK provider
 
-`local-llm/ai` is a provider for [the AI SDK](https://ai-sdk.dev) (spec v4, `@ai-sdk/provider` 4.x). It works with `generateText`, `streamText` and `generateObject`.
+`tiny-llm/ai` is a provider for [the AI SDK](https://ai-sdk.dev) (spec v4, `@ai-sdk/provider` 4.x). It works with `generateText`, `streamText` and `generateObject`.
 
 ```ts
 import { generateText, streamText, generateObject } from "ai";
-import { local-llm, createLocalLLMProvider } from "local-llm/ai";
+import { tiny-llm, createTinyLLMProvider } from "tiny-llm/ai";
 import { z } from "zod";
 
-const model = localLLM("qwen2.5-0.5b");
+const model = tinyLLM("qwen2.5-0.5b");
 
 await generateText({ model, prompt: "Hello", maxOutputTokens: 64, temperature: 0 });
 
@@ -23,18 +23,18 @@ await generateObject({
 
 ## Choosing a model and settings
 
-`local-llm(modelId, settings?)` takes the same settings as `createLocalLLM`, except `model`:
+`tiny-llm(modelId, settings?)` takes the same settings as `createTinyLLM`, except `model`:
 
 ```ts
-const local = localLLM("qwen2.5-0.5b", { maxConcurrency: 2, cacheDir: "./models" });
+const local = tinyLLM("qwen2.5-0.5b", { maxConcurrency: 2, cacheDir: "./models" });
 ```
 
 Calls with the same model and settings share one loaded instance. The model loads once per process.
 
-For several settings sets, or for a provider you configure in one place, use `createLocalLLMProvider`:
+For several settings sets, or for a provider you configure in one place, use `createTinyLLMProvider`:
 
 ```ts
-const provider = createLocalLLMProvider({ maxConcurrency: 2 });
+const provider = createTinyLLMProvider({ maxConcurrency: 2 });
 const model = provider.languageModel("qwen2.5-0.5b"); // or provider("qwen2.5-0.5b")
 ```
 
@@ -42,7 +42,7 @@ const model = provider.languageModel("qwen2.5-0.5b"); // or provider("qwen2.5-0.
 
 ## What maps to what
 
-| AI SDK | local-llm |
+| AI SDK | tiny-llm |
 | --- | --- |
 | `maxOutputTokens` | `maxTokens` |
 | `temperature`, `topP`, `topK`, `seed` | the same |

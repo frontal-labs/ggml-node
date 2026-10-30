@@ -4,13 +4,13 @@ import {
   benchModel,
   doctor,
   doctorExitCode,
-  type LocalLLMFactory,
   runPrompt,
+  type TinyLLMFactory,
 } from "@/cli/commands.js";
-import { isLocalLLMError, LocalLLMError } from "@/core/errors.js";
-import { createLocalLLM } from "@/core/local-llm.js";
+import { isTinyLLMError, TinyLLMError } from "@/core/errors.js";
 import { listOptionsSchema, pullOptionsSchema } from "@/core/schemas.js";
-import { env as defaultEnv, type LocalLLMEnv } from "@/env.js";
+import { createTinyLLM } from "@/core/tiny-llm.js";
+import { env as defaultEnv, type TinyLLMEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { downloadFile, verifyFile } from "@/registry/download.js";
 import { isModelPresent, modelFilePath } from "@/registry/ensure.js";
@@ -21,9 +21,9 @@ import { VERSION } from "@/version.js";
 export const EXIT = { ENVIRONMENT_ERROR: 2, OK: 0, USER_ERROR: 1 } as const;
 
 export interface CliIO {
-  /** Builds the LocalLLM used by run, bench and doctor. Tests inject the mock; the default is the real one. */
-  createLocalLLM?: LocalLLMFactory;
-  env?: LocalLLMEnv;
+  /** Builds the TinyLLM used by run, bench and doctor. Tests inject the mock; the default is the real one. */
+  createTinyLLM?: TinyLLMFactory;
+  env?: TinyLLMEnv;
   fetch?: typeof fetch;
   stderr: (text: string) => void;
   /** Whether stderr is a terminal. Progress lines are only drawn when it is. */
@@ -58,11 +58,11 @@ export interface CommandState {
 
 export function createProgram(
   io: CliIO,
-  env: LocalLLMEnv = defaultEnv,
+  env: TinyLLMEnv = defaultEnv,
   state: CommandState = { exitCode: EXIT.OK },
 ): Command {
   const program = new Command()
-    .name("local-llm")
+    .name("tiny-llm")
     .description("Run a small LLM in-process. No daemon, no API key, no port.")
     .version(VERSION, "-v, --version")
     .exitOverride()
@@ -92,7 +92,7 @@ export function createProgram(
       await list(options.json, io, env);
     });
 
-  const factory: LocalLLMFactory = io.createLocalLLM ?? ((options) => createLocalLLM(options));
+  const factory: TinyLLMFactory = io.createTinyLLM ?? ((options) => createTinyLLM(options));
 
   program
     .command("run")
@@ -125,13 +125,9 @@ export function createProgram(
     .option("--json", "machine-readable output")
     .action(async (modelId: ModelId, raw: { tokens: number; json?: boolean }) => {
       if (!Number.isInteger(raw.tokens) || raw.tokens < 1) {
-        throw new LocalLLMError(
-          "INVALID_OPTIONS",
-          "--tokens must be a whole number of at least 1",
-          {
-            hint: "Pass --tokens 128, for example.",
-          },
-        );
+        throw new TinyLLMError("INVALID_OPTIONS", "--tokens must be a whole number of at least 1", {
+          hint: "Pass --tokens 128, for example.",
+        });
       }
       const result = await benchModel(modelId, raw.tokens, factory, env);
       if (raw.json) {
@@ -191,7 +187,7 @@ export function createProgram(
 }
 
 function reportError(err: unknown, io: CliIO): number {
-  if (isLocalLLMError(err)) {
+  if (isTinyLLMError(err)) {
     io.stderr(`error [${err.code}]: ${err.message}\n  hint: ${err.hint}\n`);
     return err.code === "INVALID_OPTIONS" || err.code === "MODEL_NOT_FOUND"
       ? EXIT.USER_ERROR
@@ -206,14 +202,14 @@ async function pull(
   modelId: ModelId,
   dir: string | undefined,
   io: CliIO,
-  env: LocalLLMEnv,
+  env: TinyLLMEnv,
 ): Promise<void> {
   const entry = MODELS[modelId];
   const cacheDir = dir ?? resolveCacheDir({ env });
 
   if (resolveOffline(undefined, env)) {
-    throw new LocalLLMError("INVALID_OPTIONS", "pull needs the network, but offline mode is on", {
-      hint: "Unset LOCAL_LLM_OFFLINE, then run pull again.",
+    throw new TinyLLMError("INVALID_OPTIONS", "pull needs the network, but offline mode is on", {
+      hint: "Unset TINY_LLM_OFFLINE, then run pull again.",
     });
   }
 
@@ -251,7 +247,7 @@ async function pull(
   io.stdout(`${path}\n`);
 }
 
-async function list(json: boolean, io: CliIO, env: LocalLLMEnv): Promise<void> {
+async function list(json: boolean, io: CliIO, env: TinyLLMEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
   const rows = await Promise.all(
     MODEL_IDS.map(async (id) => {
@@ -284,11 +280,7 @@ async function list(json: boolean, io: CliIO, env: LocalLLMEnv): Promise<void> {
   io.stdout(`\nCache dir: ${dir}\n`);
 }
 
-async function clearCache(
-  modelId: ModelId | undefined,
-  io: CliIO,
-  env: LocalLLMEnv,
-): Promise<void> {
+async function clearCache(modelId: ModelId | undefined, io: CliIO, env: TinyLLMEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
   const targets: readonly ModelId[] = modelId ? [modelId] : MODEL_IDS;
   // Only the registry's own file names are touched, along with their partial and lock files.

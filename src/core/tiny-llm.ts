@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/useErrorCause: LocalLLMError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: TinyLLMError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
@@ -6,7 +6,7 @@ import { createIsolatedBackend } from "@/backend/isolated/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
-import { isLocalLLMError, LocalLLMError } from "@/core/errors.js";
+import { isTinyLLMError, TinyLLMError } from "@/core/errors.js";
 import { emitEvent } from "@/core/events.js";
 import {
   estimateModelBytes,
@@ -16,7 +16,7 @@ import {
 } from "@/core/memory.js";
 import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
 import { abortedError, Scheduler } from "@/core/scheduler.js";
-import { firstIssue, localLLMOptionsSchema } from "@/core/schemas.js";
+import { firstIssue, tinyLLMOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
@@ -28,15 +28,15 @@ import type {
   GenerateOptions,
   GenerateResult,
   JsonSchemaObject,
-  LocalLLM,
-  LocalLLMOptions,
   ModelInfo,
   ObjectOptions,
   ObjectResult,
   StreamResult,
+  TinyLLM,
+  TinyLLMOptions,
   ZodLikeSchema,
 } from "@/core/types.js";
-import { env as defaultEnv, type LocalLLMEnv } from "@/env.js";
+import { env as defaultEnv, type TinyLLMEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
@@ -44,19 +44,19 @@ import { MODELS, type ModelId } from "@/registry/models.js";
 const DEFAULT_CONTEXT_CAP = 4096;
 
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
-export interface LocalLLMDeps {
+export interface TinyLLMDeps {
   createBackend: () => Backend;
   /** Backend for `isolation: "process"`: the native backend in a child process. */
   createIsolatedBackend: () => Backend;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
-  env: LocalLLMEnv;
+  env: TinyLLMEnv;
   memory: MemoryReaders;
-  /** Whether a custom model path exists. Injected so tests and `local-llm/testing` need no file. */
+  /** Whether a custom model path exists. Injected so tests and `tiny-llm/testing` need no file. */
   pathExists: (path: string) => Promise<boolean>;
   readMeta: (path: string) => Promise<ModelMeta>;
 }
 
-export const defaultDeps: LocalLLMDeps = {
+export const defaultDeps: TinyLLMDeps = {
   createBackend: createLlamaCppBackend,
   createIsolatedBackend: () => createIsolatedBackend(),
   env: defaultEnv,
@@ -95,15 +95,15 @@ interface RunOutcome {
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
-export function createLocalLLM(options: LocalLLMOptions): LocalLLM {
-  return createLocalLLMWithDeps(options, defaultDeps);
+export function createTinyLLM(options: TinyLLMOptions): TinyLLM {
+  return createTinyLLMWithDeps(options, defaultDeps);
 }
 
-export function createLocalLLMWithDeps(
-  options: LocalLLMOptions,
-  overrides: Partial<LocalLLMDeps> = {},
-): LocalLLM {
-  const deps: LocalLLMDeps = { ...defaultDeps, ...overrides };
+export function createTinyLLMWithDeps(
+  options: TinyLLMOptions,
+  overrides: Partial<TinyLLMDeps> = {},
+): TinyLLM {
+  const deps: TinyLLMDeps = { ...defaultDeps, ...overrides };
   validateOptions(options);
 
   const id: ModelId | "custom" = typeof options.model === "string" ? options.model : "custom";
@@ -149,7 +149,7 @@ export function createLocalLLMWithDeps(
       license = "unknown";
       contextCap = Number.POSITIVE_INFINITY;
       if (!(await deps.pathExists(path))) {
-        throw new LocalLLMError("MODEL_NOT_FOUND", `No file at ${path}`, {
+        throw new TinyLLMError("MODEL_NOT_FOUND", `No file at ${path}`, {
           hint: "Check the path. Custom models must be GGUF files on disk.",
         });
       }
@@ -160,7 +160,7 @@ export function createLocalLLMWithDeps(
       options.contextSize ??
       Math.min(Math.min(contextCap, meta.trainContextSize), DEFAULT_CONTEXT_CAP);
     if (!Number.isInteger(contextSize) || contextSize < 1) {
-      throw new LocalLLMError("INVALID_OPTIONS", "contextSize must be a positive integer", {
+      throw new TinyLLMError("INVALID_OPTIONS", "contextSize must be a positive integer", {
         hint: "Set contextSize to a whole number, or leave it unset.",
       });
     }
@@ -194,7 +194,7 @@ export function createLocalLLMWithDeps(
       return { backend, info, scheduler: new Scheduler({ maxQueue, sequences: maxConcurrency }) };
     } catch (err) {
       await backend.unload().catch(() => undefined);
-      throw toLocalLLMError(err);
+      throw toTinyLLMError(err);
     }
   }
 
@@ -230,7 +230,7 @@ export function createLocalLLMWithDeps(
     const { backend, scheduler, info } = state;
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
-      throw new LocalLLMError(
+      throw new TinyLLMError(
         "INVALID_OPTIONS",
         `maxTokens (${req.maxTokens}) must be less than contextSize (${info.contextSize})`,
         { hint: "Lower maxTokens or raise contextSize." },
@@ -267,7 +267,7 @@ export function createLocalLLMWithDeps(
       };
       outcome = await backend.generate(lease.index, request, (text) => onDelta?.(text));
     } catch (err) {
-      throw toLocalLLMError(err);
+      throw toTinyLLMError(err);
     } finally {
       lease.release();
     }
@@ -301,7 +301,7 @@ export function createLocalLLMWithDeps(
       emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       return result;
     } catch (err) {
-      emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -331,7 +331,7 @@ export function createLocalLLMWithDeps(
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
     } catch (err) {
-      emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -367,13 +367,13 @@ export function createLocalLLMWithDeps(
         return finished;
       },
       (err: unknown) => {
-        if (isLocalLLMError(err) && err.code === "ABORTED" && controller.signal.aborted) {
+        if (isTinyLLMError(err) && err.code === "ABORTED" && controller.signal.aborted) {
           // Aborted while queued: nothing was generated. Resolve, as the contract says.
           chunks.close();
           return emptyAbortResult();
         }
         chunks.fail(err);
-        emitEvent(onEvent, { error: toLocalLLMError(err), id: requestId, type: "request:error" });
+        emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
         throw err;
       },
     );
@@ -412,7 +412,7 @@ export function createLocalLLMWithDeps(
     info(): ModelInfo | null {
       return loaded?.info ?? null;
     },
-    object: object as LocalLLM["object"],
+    object: object as TinyLLM["object"],
     async ready(): Promise<ModelInfo> {
       const { state } = await ensureLoaded();
       return state.info;
@@ -440,14 +440,14 @@ export function createLocalLLMWithDeps(
   };
 }
 
-function validateOptions(options: LocalLLMOptions): void {
-  const parsed = localLLMOptionsSchema.safeParse(options);
+function validateOptions(options: TinyLLMOptions): void {
+  const parsed = tinyLLMOptionsSchema.safeParse(options);
   if (parsed.success) {
     return;
   }
   const issue = firstIssue(parsed.error);
-  throw new LocalLLMError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
-    hint: "Check createLocalLLM options against docs/api.md.",
+  throw new TinyLLMError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+    hint: "Check createTinyLLM options against docs/api.md.",
   });
 }
 
@@ -482,7 +482,7 @@ function checkStructured(
 /** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */
 function asJsonSchemaObject(schema: unknown): JsonSchemaObject {
   if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
-    throw new LocalLLMError(
+    throw new TinyLLMError(
       "INVALID_OPTIONS",
       "schema must be a Zod schema or a JSON Schema object",
       {
@@ -498,16 +498,16 @@ function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {
   return rest;
 }
 
-function toLocalLLMError(err: unknown): LocalLLMError {
-  if (isLocalLLMError(err)) {
+function toTinyLLMError(err: unknown): TinyLLMError {
+  if (isTinyLLMError(err)) {
     return err;
   }
-  return new LocalLLMError(
+  return new TinyLLMError(
     "BACKEND_CRASHED",
     err instanceof Error ? err.message : "Unknown backend error",
     {
       cause: err,
-      hint: "Run: npx local-llm doctor. If this persists, report it with the stack trace.",
+      hint: "Run: npx tiny-llm doctor. If this persists, report it with the stack trace.",
     },
   );
 }

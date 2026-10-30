@@ -1,9 +1,9 @@
 ---
-name: local-llm-structured-output
-description: Get a typed object from a local local-llm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
+name: tiny-llm-structured-output
+description: Get a typed object from a local tiny-llm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
 ---
 
-# local-llm-structured-output
+# tiny-llm-structured-output
 
 `object()` generates JSON under a grammar, so the shape is guaranteed. The values still come from the model, so validate what matters.
 

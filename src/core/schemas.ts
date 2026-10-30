@@ -1,10 +1,10 @@
 import { z } from "zod";
-import type { LocalLLMEvent } from "@/core/types.js";
+import type { TinyLLMEvent } from "@/core/types.js";
 import { MODEL_IDS, type ModelId } from "@/registry/models.js";
 
 /**
  * Zod schemas for every public option surface. The inferred types are the source of truth for
- * `src/core/types.ts` consumers, and the schemas run at each boundary: `createLocalLLM`, each
+ * `src/core/types.ts` consumers, and the schemas run at each boundary: `createTinyLLM`, each
  * generate call, and the CLI.
  */
 
@@ -12,11 +12,11 @@ export const modelIdSchema = z.enum(MODEL_IDS as [ModelId, ...ModelId[]]);
 
 export const modelSourceSchema = z.union([modelIdSchema, z.object({ path: z.string().min(1) })]);
 
-const eventListener = z.custom<(event: LocalLLMEvent) => void>(
+const eventListener = z.custom<(event: TinyLLMEvent) => void>(
   (value) => typeof value === "function",
 );
 
-export const localLLMOptionsSchema = z.object({
+export const tinyLLMOptionsSchema = z.object({
   acceptLicense: z.boolean().optional(),
   autoDownload: z.boolean().optional(),
   cacheDir: z.string().min(1).optional(),
@@ -60,7 +60,7 @@ export const listOptionsSchema = z.object({
   json: z.boolean().default(false),
 });
 
-export type LocalLLMOptionsInput = z.input<typeof localLLMOptionsSchema>;
+export type TinyLLMOptionsInput = z.input<typeof tinyLLMOptionsSchema>;
 export type GenerateOptionsInput = z.input<typeof generateOptionsSchema>;
 export type PullOptions = z.infer<typeof pullOptionsSchema>;
 export type ListOptions = z.infer<typeof listOptionsSchema>;

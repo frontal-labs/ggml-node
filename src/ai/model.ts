@@ -10,15 +10,15 @@ import type {
   LanguageModelV4Usage,
   SharedV4Warning,
 } from "@ai-sdk/provider";
-import { LocalLLMError } from "@/core/errors.js";
-import type { GenerateResult, LocalLLM, Message } from "@/core/types.js";
+import { TinyLLMError } from "@/core/errors.js";
+import type { GenerateResult, Message, TinyLLM } from "@/core/types.js";
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.
- * Tests build models directly from a fake-backed LocalLLM through `languageModelFor`.
+ * Tests build models directly from a fake-backed TinyLLM through `languageModelFor`.
  */
-export function languageModelFor(modelId: string, llm: LocalLLM): LanguageModelV4 {
-  return new LocalLLMLanguageModel(modelId, llm);
+export function languageModelFor(modelId: string, llm: TinyLLM): LanguageModelV4 {
+  return new TinyLLMLanguageModel(modelId, llm);
 }
 
 export interface MappedPrompt {
@@ -95,7 +95,7 @@ function toolWarnings(options: LanguageModelV4CallOptions): SharedV4Warning[] {
   }
   const choice = options.toolChoice;
   if (choice && (choice.type === "required" || choice.type === "tool")) {
-    throw new LocalLLMError(
+    throw new TinyLLMError(
       "INVALID_OPTIONS",
       `toolChoice "${choice.type}" needs tool calling, which v1 does not have`,
       {
@@ -148,7 +148,7 @@ function sharedCall(options: LanguageModelV4CallOptions, messages: Message[]): S
 }
 
 /** Builds the core options object, leaving out undefined fields (exactOptionalPropertyTypes). */
-function toGenerateOptions(call: SharedCall): Parameters<LocalLLM["generate"]>[0] {
+function toGenerateOptions(call: SharedCall): Parameters<TinyLLM["generate"]>[0] {
   return {
     messages: call.messages,
     ...(call.maxTokens === undefined ? {} : { maxTokens: call.maxTokens }),
@@ -204,14 +204,14 @@ function jsonPlan(
   };
 }
 
-class LocalLLMLanguageModel implements LanguageModelV4 {
+class TinyLLMLanguageModel implements LanguageModelV4 {
   readonly specificationVersion = "v4" as const;
-  readonly provider = "local-llm";
+  readonly provider = "tiny-llm";
   readonly modelId: string;
   readonly supportedUrls: Record<string, RegExp[]> = {};
-  private readonly llm: LocalLLM;
+  private readonly llm: TinyLLM;
 
-  constructor(modelId: string, llm: LocalLLM) {
+  constructor(modelId: string, llm: TinyLLM) {
     this.modelId = modelId;
     this.llm = llm;
   }

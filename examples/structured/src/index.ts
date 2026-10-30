@@ -1,12 +1,12 @@
 /**
  * Structured output with Zod: a classification and a nested extraction. The grammar guarantees the
  * shape. Zod checks the values again. Run from the repo root:
- *   bun run build && bun --filter '@local-llm/example-structured' start
+ *   bun run build && bun --filter '@tiny-llm/example-structured' start
  */
-import { createLocalLLM } from "local-llm";
+import { createTinyLLM } from "tiny-llm";
 import { z } from "zod";
 
-const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
 
 const review = z.object({
   confidence: z.enum(["low", "medium", "high"]),

@@ -2,9 +2,9 @@ import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isLocalLLMError } from "@/core/errors.js";
-import { createLocalLLMWithDeps, type LocalLLMDeps } from "@/core/local-llm.js";
-import type { LocalLLM, LocalLLMEvent, LocalLLMOptions } from "@/core/types.js";
+import { isTinyLLMError } from "@/core/errors.js";
+import { createTinyLLMWithDeps, type TinyLLMDeps } from "@/core/tiny-llm.js";
+import type { TinyLLM, TinyLLMEvent, TinyLLMOptions } from "@/core/types.js";
 import { MODELS } from "@/registry/models.js";
 import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-backend.js";
 
@@ -13,17 +13,17 @@ const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };
 function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   return p.then(
     () => undefined,
-    (e: unknown) => (isLocalLLMError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
+    (e: unknown) => (isTinyLLMError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
   );
 }
 
-describe("createLocalLLM", () => {
+describe("createTinyLLM", () => {
   let dir: string;
   let modelPath: string;
-  let events: LocalLLMEvent[];
+  let events: TinyLLMEvent[];
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "local-llm-core-"));
+    dir = await mkdtemp(join(tmpdir(), "tiny-llm-core-"));
     modelPath = join(dir, "custom.gguf");
     await writeFile(modelPath, Buffer.alloc(1000));
     events = [];
@@ -34,14 +34,14 @@ describe("createLocalLLM", () => {
   });
 
   function make(
-    options: Partial<LocalLLMOptions> & Pick<LocalLLMOptions, "model">,
+    options: Partial<TinyLLMOptions> & Pick<TinyLLMOptions, "model">,
     backendOptions: FakeBackendOptions = {},
-    depsOverride: Partial<LocalLLMDeps> = {},
+    depsOverride: Partial<TinyLLMDeps> = {},
   ) {
     const backend = createFakeBackend(backendOptions);
-    const deps: Partial<LocalLLMDeps> = {
+    const deps: Partial<TinyLLMDeps> = {
       createBackend: () => backend,
-      env: { LOCAL_LLM_CACHE_DIR: dir },
+      env: { TINY_LLM_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
         cgroupCurrentBytes: async () => undefined,
@@ -50,8 +50,8 @@ describe("createLocalLLM", () => {
       readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
       ...depsOverride,
     };
-    const ai: LocalLLM = createLocalLLMWithDeps(
-      { onEvent: (e) => events.push(e), ...options } as LocalLLMOptions,
+    const ai: TinyLLM = createTinyLLMWithDeps(
+      { onEvent: (e) => events.push(e), ...options } as TinyLLMOptions,
       deps,
     );
     return { ai, backend };
@@ -135,8 +135,8 @@ describe("createLocalLLM", () => {
         () => undefined,
         (e: unknown) => e,
       );
-      expect(isLocalLLMError(err) && err.code).toBe("BACKEND_CRASHED");
-      expect(isLocalLLMError(err) && err.hint.length > 0).toBe(true);
+      expect(isTinyLLMError(err) && err.code).toBe("BACKEND_CRASHED");
+      expect(isTinyLLMError(err) && err.hint.length > 0).toBe(true);
       expect(events.some((e) => e.type === "request:error")).toBe(true);
     });
 
@@ -171,7 +171,7 @@ describe("createLocalLLM", () => {
         })
         .catch((e: unknown) => e);
       // The last user message is never dropped, so this cannot fit and must fail.
-      expect(isLocalLLMError(r) && r.code).toBe("CONTEXT_OVERFLOW");
+      expect(isTinyLLMError(r) && r.code).toBe("CONTEXT_OVERFLOW");
     });
   });
 
@@ -276,7 +276,7 @@ describe("createLocalLLM", () => {
         make({ model: "gpt-4o" as never });
         expect.unreachable();
       } catch (err) {
-        expect(isLocalLLMError(err) && err.code).toBe("INVALID_OPTIONS");
+        expect(isTinyLLMError(err) && err.code).toBe("INVALID_OPTIONS");
       }
     });
 

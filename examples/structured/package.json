@@ -1,5 +1,5 @@
 {
-  "name": "@local-llm/example-structured",
+  "name": "@tiny-llm/example-structured",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "local-llm": "file:../..",
+    "tiny-llm": "file:../..",
     "zod": "^4.6.7"
   }
 }

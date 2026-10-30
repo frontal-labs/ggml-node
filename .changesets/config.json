@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@local-llm/example-*"]
+  "ignore": ["@tiny-llm/example-*"]
 }

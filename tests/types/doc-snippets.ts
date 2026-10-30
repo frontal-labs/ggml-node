@@ -5,13 +5,13 @@
  * is exported so the typecheck sees it used, and none is called at runtime.
  */
 import { generateText } from "ai";
-import { createLocalLLM } from "local-llm";
-import { localLLM } from "local-llm/ai";
-import { createMockLocalLLM, mockModel } from "local-llm/testing";
+import { createTinyLLM } from "tiny-llm";
+import { tinyLLM } from "tiny-llm/ai";
+import { createMockTinyLLM, mockModel } from "tiny-llm/testing";
 import { z } from "zod";
 
 export async function readmeQuickstart(): Promise<void> {
-  const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+  const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
 
   const { text } = await ai.generate({
     maxTokens: 64,
@@ -27,18 +27,18 @@ export async function readmeQuickstart(): Promise<void> {
 }
 
 export async function readmeAiSdk(): Promise<void> {
-  const { text } = await generateText({ model: localLLM("qwen2.5-0.5b"), prompt: "Hello" });
+  const { text } = await generateText({ model: tinyLLM("qwen2.5-0.5b"), prompt: "Hello" });
   void text;
 }
 
 export async function readmeTesting(): Promise<void> {
-  const ai = createMockLocalLLM({ respond: "a fixed answer" });
+  const ai = createMockTinyLLM({ respond: "a fixed answer" });
   void ai;
   void mockModel({ respond: "hi" });
 }
 
 export async function gettingStartedStream(): Promise<void> {
-  const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+  const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
   const s = ai.stream({ maxTokens: 64, prompt: "Name three rivers." });
   for await (const delta of s.textStream) {
     void delta;

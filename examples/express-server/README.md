@@ -1,6 +1,6 @@
 # Express server example
 
-An Express endpoint that serves one shared model. local-llm is a library, not a server: the HTTP layer here is yours.
+An Express endpoint that serves one shared model. tiny-llm is a library, not a server: the HTTP layer here is yours.
 
 ## Build and run
 
@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@local-llm/example-express-server' start
+bun --filter '@tiny-llm/example-express-server' start
 ```
 
 Then:

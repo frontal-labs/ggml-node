@@ -9,19 +9,19 @@
 ## Install
 
 ```sh
-npm install local-llm
+npm install tiny-llm
 ```
 
-`local-llm` has no install script of its own. Its native dependency, `node-llama-cpp`, runs its own `postinstall`, which checks the native binary for your platform. Nothing downloads a model at install time.
+`tiny-llm` has no install script of its own. Its native dependency, `node-llama-cpp`, runs its own `postinstall`, which checks the native binary for your platform. Nothing downloads a model at install time.
 
-`zod` is a dependency of `local-llm`. Add it to your own project as well if you write schemas: `npm install zod`.
+`zod` is a dependency of `tiny-llm`. Add it to your own project as well if you write schemas: `npm install zod`.
 
 ## Pull a model
 
 The default model is `qwen2.5-0.5b` (Qwen2.5 0.5B Instruct, Q4_K_M, Apache-2.0, 491 MB). Installing the package downloads nothing. Models download on first use, or explicitly:
 
 ```sh
-npx local-llm pull qwen2.5-0.5b
+npx tiny-llm pull qwen2.5-0.5b
 ```
 
 The download resumes if interrupted, and the file is verified against its SHA-256 before it is used.
@@ -29,9 +29,9 @@ The download resumes if interrupted, and the file is verified against its SHA-25
 ## Generate
 
 ```ts
-import { createLocalLLM } from "local-llm";
+import { createTinyLLM } from "tiny-llm";
 
-const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
 
 const { text } = await ai.generate({
   prompt: "In one sentence, what is a river?",
@@ -74,9 +74,9 @@ See [structured output](./structured-output.md) for what the grammar guarantees 
 
 ```ts
 import { generateText } from "ai";
-import { localLLM } from "local-llm/ai";
+import { tinyLLM } from "tiny-llm/ai";
 
-const { text } = await generateText({ model: localLLM("qwen2.5-0.5b"), prompt: "Hello" });
+const { text } = await generateText({ model: tinyLLM("qwen2.5-0.5b"), prompt: "Hello" });
 ```
 
 See [AI SDK provider](./ai-sdk.md).
@@ -84,5 +84,5 @@ See [AI SDK provider](./ai-sdk.md).
 ## Next steps
 
 - Read the [API reference](./api.md) for every option and error code.
-- Try the [examples](../examples): `bun --filter '@local-llm/example-basic' start`.
-- If something fails, run `npx local-llm doctor` first. See [troubleshooting](./troubleshooting.md).
+- Try the [examples](../examples): `bun --filter '@tiny-llm/example-basic' start`.
+- If something fails, run `npx tiny-llm doctor` first. See [troubleshooting](./troubleshooting.md).

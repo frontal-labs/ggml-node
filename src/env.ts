@@ -9,11 +9,11 @@ import { z } from "zod";
  * paths happens where each value is used, through the schemas exported below.
  */
 export const envSchema = {
-  LOCAL_LLM_CACHE_DIR: z.string().min(1).optional(),
-  /** Test-only switch. Enables the real-model suites under `tests/e2e`. */
-  LOCAL_LLM_E2E: z.string().optional(),
-  LOCAL_LLM_OFFLINE: z.string().optional(),
   LOCALAPPDATA: z.string().min(1).optional(),
+  TINY_LLM_CACHE_DIR: z.string().min(1).optional(),
+  /** Test-only switch. Enables the real-model suites under `tests/e2e`. */
+  TINY_LLM_E2E: z.string().optional(),
+  TINY_LLM_OFFLINE: z.string().optional(),
   XDG_CACHE_HOME: z.string().min(1).optional(),
 } as const;
 
@@ -24,7 +24,7 @@ export const env = createEnv({
 });
 
 /** The environment shape, with every variable optional. Functions accept this so tests can inject one. */
-export type LocalLLMEnv = Partial<{ [K in keyof typeof envSchema]: string | undefined }>;
+export type TinyLLMEnv = Partial<{ [K in keyof typeof envSchema]: string | undefined }>;
 
 /** Accepts the usual boolean spellings: 1/0, true/false, yes/no, on/off. */
 export const flagSchema = z.stringbool();

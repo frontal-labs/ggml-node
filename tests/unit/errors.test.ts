@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { isLocalLLMError, LOCAL_LLM_ERROR_CODES, LocalLLMError } from "@/index.js";
+import { isTinyLLMError, TINY_LLM_ERROR_CODES, TinyLLMError } from "@/index.js";
 
-describe("LocalLLMError", () => {
+describe("TinyLLMError", () => {
   it("carries code, hint and cause", () => {
     const cause = new Error("disk full");
-    const err = new LocalLLMError("DOWNLOAD_FAILED", "download failed", {
+    const err = new TinyLLMError("DOWNLOAD_FAILED", "download failed", {
       cause,
-      hint: "Run: npx local-llm pull qwen2.5-0.5b",
+      hint: "Run: npx tiny-llm pull qwen2.5-0.5b",
     });
     expect(err).toBeInstanceOf(Error);
-    expect(err.name).toBe("LocalLLMError");
+    expect(err.name).toBe("TinyLLMError");
     expect(err.code).toBe("DOWNLOAD_FAILED");
-    expect(err.hint).toBe("Run: npx local-llm pull qwen2.5-0.5b");
+    expect(err.hint).toBe("Run: npx tiny-llm pull qwen2.5-0.5b");
     expect(err.cause).toBe(cause);
-    expect(isLocalLLMError(err)).toBe(true);
-    expect(isLocalLLMError(new Error("x"))).toBe(false);
+    expect(isTinyLLMError(err)).toBe(true);
+    expect(isTinyLLMError(new Error("x"))).toBe(false);
   });
 
   it("enumerates exactly the codes in Section 3.3", () => {
-    expect([...LOCAL_LLM_ERROR_CODES].sort()).toEqual(
+    expect([...TINY_LLM_ERROR_CODES].sort()).toEqual(
       [
         "MODEL_NOT_FOUND",
         "DOWNLOAD_FAILED",

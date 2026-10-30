@@ -1,12 +1,12 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { LocalLLMError } from "@/core/errors.js";
-import { env as defaultEnv, flagSchema, type LocalLLMEnv } from "@/env.js";
+import { TinyLLMError } from "@/core/errors.js";
+import { env as defaultEnv, flagSchema, type TinyLLMEnv } from "@/env.js";
 
 export interface ResolveCacheDirOptions {
   /** Explicit option. Wins over the environment. */
   cacheDir?: string | undefined;
-  env?: LocalLLMEnv;
+  env?: TinyLLMEnv;
   home?: string;
   platform?: NodeJS.Platform;
 }
@@ -14,10 +14,10 @@ export interface ResolveCacheDirOptions {
 /**
  * Resolves the model cache directory.
  *
- * Order: `cacheDir` option, then `LOCAL_LLM_CACHE_DIR`, then the OS cache directory:
- * - macOS: `~/Library/Caches/local-llm`
- * - Linux: `$XDG_CACHE_HOME/local-llm`, or `~/.cache/local-llm`
- * - Windows: `%LOCALAPPDATA%\local-llm\cache`
+ * Order: `cacheDir` option, then `TINY_LLM_CACHE_DIR`, then the OS cache directory:
+ * - macOS: `~/Library/Caches/tiny-llm`
+ * - Linux: `$XDG_CACHE_HOME/tiny-llm`, or `~/.cache/tiny-llm`
+ * - Windows: `%LOCALAPPDATA%\tiny-llm\cache`
  */
 export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
   const env = options.env ?? defaultEnv;
@@ -27,46 +27,39 @@ export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
   if (options.cacheDir) {
     return options.cacheDir;
   }
-  if (env.LOCAL_LLM_CACHE_DIR) {
-    return env.LOCAL_LLM_CACHE_DIR;
+  if (env.TINY_LLM_CACHE_DIR) {
+    return env.TINY_LLM_CACHE_DIR;
   }
 
   if (platform === "darwin") {
-    return join(home, "Library", "Caches", "local-llm");
+    return join(home, "Library", "Caches", "tiny-llm");
   }
   if (platform === "win32") {
     const localAppData = env.LOCALAPPDATA ?? join(home, "AppData", "Local");
-    return join(localAppData, "local-llm", "cache");
+    return join(localAppData, "tiny-llm", "cache");
   }
   const xdg = env.XDG_CACHE_HOME;
-  return xdg ? join(xdg, "local-llm") : join(home, ".cache", "local-llm");
+  return xdg ? join(xdg, "tiny-llm") : join(home, ".cache", "tiny-llm");
 }
 
 /**
- * Offline is on when the option is `true`, or when `LOCAL_LLM_OFFLINE` parses as true. The env var
+ * Offline is on when the option is `true`, or when `TINY_LLM_OFFLINE` parses as true. The env var
  * can turn offline on, but an explicit `offline: false` does not turn it off. A value that is not a
  * boolean throws `INVALID_OPTIONS`, so a typo cannot silently leave the network on.
  */
-export function resolveOffline(
-  option: boolean | undefined,
-  env: LocalLLMEnv = defaultEnv,
-): boolean {
+export function resolveOffline(option: boolean | undefined, env: TinyLLMEnv = defaultEnv): boolean {
   if (option === true) {
     return true;
   }
-  const raw = env.LOCAL_LLM_OFFLINE;
+  const raw = env.TINY_LLM_OFFLINE;
   if (raw === undefined) {
     return false;
   }
   const parsed = flagSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new LocalLLMError(
-      "INVALID_OPTIONS",
-      `LOCAL_LLM_OFFLINE must be a boolean, got "${raw}"`,
-      {
-        hint: "Use 1 or 0, true or false.",
-      },
-    );
+    throw new TinyLLMError("INVALID_OPTIONS", `TINY_LLM_OFFLINE must be a boolean, got "${raw}"`, {
+      hint: "Use 1 or 0, true or false.",
+    });
   }
   return parsed.data;
 }

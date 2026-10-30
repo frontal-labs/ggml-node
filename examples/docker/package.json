@@ -1,13 +1,13 @@
 {
-  "name": "@local-llm/example-docker",
+  "name": "@tiny-llm/example-docker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t local-llm-example .",
+    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t tiny-llm-example .",
     "start": "node src/server.mjs"
   },
   "dependencies": {
-    "local-llm": "file:../.."
+    "tiny-llm": "file:../.."
   }
 }

@@ -1,6 +1,6 @@
-// biome-ignore-all lint/style/useErrorCause: LocalLLMError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: TinyLLMError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
-import { LocalLLMError } from "@/core/errors.js";
+import { TinyLLMError } from "@/core/errors.js";
 import type { KvShape } from "@/core/memory.js";
 
 export interface ModelMeta {
@@ -21,7 +21,7 @@ export async function readModelMeta(path: string): Promise<ModelMeta> {
   try {
     info = await readGgufFileInfo(path, { readTensorInfo: false });
   } catch (err) {
-    throw new LocalLLMError("INVALID_OPTIONS", `${path} is not a readable GGUF file`, {
+    throw new TinyLLMError("INVALID_OPTIONS", `${path} is not a readable GGUF file`, {
       cause: err,
       hint: "Check the path. Custom models must be GGUF files.",
     });
@@ -52,7 +52,7 @@ export async function readModelMeta(path: string): Promise<ModelMeta> {
 
 function num(value: unknown, key: string, path: string): number {
   if (typeof value !== "number") {
-    throw new LocalLLMError("INVALID_OPTIONS", `GGUF file ${path} has no ${key}`, {
+    throw new TinyLLMError("INVALID_OPTIONS", `GGUF file ${path} has no ${key}`, {
       hint: "The file may be truncated or not a text-generation model.",
     });
   }

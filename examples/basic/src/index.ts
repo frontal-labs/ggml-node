@@ -1,10 +1,10 @@
 /**
  * The core API: generate, stream, and unload. Run from the repo root:
- *   bun run build && bun --filter '@local-llm/example-basic' start
+ *   bun run build && bun --filter '@tiny-llm/example-basic' start
  */
-import { createLocalLLM } from "local-llm";
+import { createTinyLLM } from "tiny-llm";
 
-const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
 
 const info = await ai.ready();
 console.log(

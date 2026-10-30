@@ -1,5 +1,5 @@
 {
-  "name": "@local-llm/example-ai-sdk",
+  "name": "@tiny-llm/example-ai-sdk",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "ai": "^7.0.157",
-    "local-llm": "file:../..",
+    "tiny-llm": "file:../..",
     "zod": "^4.6.7"
   },
   "devDependencies": {

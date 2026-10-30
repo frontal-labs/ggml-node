@@ -1,5 +1,5 @@
-// biome-ignore-all lint/style/useErrorCause: LocalLLMError takes its cause inside the options object (see src/core/errors.ts)
-import { LocalLLMError } from "@/core/errors.js";
+// biome-ignore-all lint/style/useErrorCause: TinyLLMError takes its cause inside the options object (see src/core/errors.ts)
+import { TinyLLMError } from "@/core/errors.js";
 import type { JsonSchemaObject, Message, ZodLikeSchema } from "@/core/types.js";
 
 /**
@@ -65,17 +65,13 @@ export async function zodToJsonSchema(schema: ZodLikeSchema): Promise<JsonSchema
   try {
     zod = await import("zod");
   } catch (err) {
-    throw new LocalLLMError(
-      "INVALID_OPTIONS",
-      "A Zod schema was passed, but zod is not installed",
-      {
-        cause: err,
-        hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
-      },
-    );
+    throw new TinyLLMError("INVALID_OPTIONS", "A Zod schema was passed, but zod is not installed", {
+      cause: err,
+      hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
+    });
   }
   if (typeof zod.toJSONSchema !== "function") {
-    throw new LocalLLMError("INVALID_OPTIONS", "Only Zod 4 schemas are supported", {
+    throw new TinyLLMError("INVALID_OPTIONS", "Only Zod 4 schemas are supported", {
       hint: "Upgrade to zod 4, or pass a plain JSON Schema object.",
     });
   }
@@ -201,8 +197,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function unsupported(path: string, reason: string): LocalLLMError {
-  return new LocalLLMError("INVALID_OPTIONS", `Unsupported JSON Schema at ${path}: ${reason}`, {
+function unsupported(path: string, reason: string): TinyLLMError {
+  return new TinyLLMError("INVALID_OPTIONS", `Unsupported JSON Schema at ${path}: ${reason}`, {
     hint: "Remove the unsupported constraint (for example a numeric minimum or a regex pattern), or validate that rule in your own code after the call.",
   });
 }
@@ -226,8 +222,8 @@ export function withSchemaInstruction(
 }
 
 /** Maps a parse or validation failure to `SCHEMA_VIOLATION`. */
-export function schemaViolation(detail: string, cause?: unknown): LocalLLMError {
-  return new LocalLLMError(
+export function schemaViolation(detail: string, cause?: unknown): TinyLLMError {
+  return new TinyLLMError(
     "SCHEMA_VIOLATION",
     `The model output did not match the schema: ${detail}`,
     {

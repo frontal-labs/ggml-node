@@ -4,13 +4,13 @@
 
 An AI model SDK inside your Node process. No daemon, no API key, no port.
 
-`local-llm` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
+`tiny-llm` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
 
 ```ts
-import { createLocalLLM } from "local-llm";
+import { createTinyLLM } from "tiny-llm";
 import { z } from "zod";
 
-const ai = createLocalLLM({ model: "qwen2.5-0.5b" });
+const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
 
 const { text } = await ai.generate({ prompt: "In one sentence, what is a river?", maxTokens: 64 });
 
@@ -25,8 +25,8 @@ await ai.unload();
 ## Install
 
 ```sh
-npm install local-llm
-npx local-llm pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
+npm install tiny-llm
+npx tiny-llm pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
 ```
 
 Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, and a GPU is optional.
@@ -35,17 +35,17 @@ Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, an
 
 ```ts
 import { generateText } from "ai";
-import { localLLM } from "local-llm/ai";
+import { tinyLLM } from "tiny-llm/ai";
 
-const { text } = await generateText({ model: localLLM("qwen2.5-0.5b"), prompt: "Hello" });
+const { text } = await generateText({ model: tinyLLM("qwen2.5-0.5b"), prompt: "Hello" });
 ```
 
 ## Test without a model
 
 ```ts
-import { createMockLocalLLM } from "local-llm/testing";
+import { createMockTinyLLM } from "tiny-llm/testing";
 
-const ai = createMockLocalLLM({ respond: "a fixed answer" });
+const ai = createMockTinyLLM({ respond: "a fixed answer" });
 ```
 
 ## Models
@@ -56,16 +56,16 @@ const ai = createMockLocalLLM({ respond: "a fixed answer" });
 | `qwen2.5-1.5b` | 1.12 GB | 32768 | Apache-2.0 |
 | `smollm2-360m` | 386 MB | 8192 | Apache-2.0 |
 
-Any other GGUF file works through `createLocalLLM({ model: { path } })`.
+Any other GGUF file works through `createTinyLLM({ model: { path } })`.
 
 ## Command line
 
 ```sh
-npx local-llm list                              # models and cache state
-npx local-llm run "What is a river?"            # generate
-npx local-llm run "Extract: Alex, 34" --json-schema person.json
-npx local-llm bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
-npx local-llm doctor                            # checks the machine and the backend
+npx tiny-llm list                              # models and cache state
+npx tiny-llm run "What is a river?"            # generate
+npx tiny-llm run "Extract: Alex, 34" --json-schema person.json
+npx tiny-llm bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
+npx tiny-llm doctor                            # checks the machine and the backend
 ```
 
 ## Documentation

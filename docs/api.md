@@ -1,10 +1,10 @@
 # API reference
 
-All public names are exported from `local-llm`. The AI SDK provider is `local-llm/ai`, and the test helpers are `local-llm/testing`.
+All public names are exported from `tiny-llm`. The AI SDK provider is `tiny-llm/ai`, and the test helpers are `tiny-llm/testing`.
 
-## `createLocalLLM(options): LocalLLM`
+## `createTinyLLM(options): TinyLLM`
 
-Creates a handle. No model loads until the first call, or until `ready()`. Invalid options throw `LocalLLMError` (`INVALID_OPTIONS`) immediately.
+Creates a handle. No model loads until the first call, or until `ready()`. Invalid options throw `TinyLLMError` (`INVALID_OPTIONS`) immediately.
 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -16,12 +16,12 @@ Creates a handle. No model loads until the first call, or until `ready()`. Inval
 | `gpu` | `"auto"` or `false` | `"auto"` | Metal, CUDA or Vulkan when available. |
 | `isolation` | `"none"` or `"process"` | `"none"` | `"process"` runs the backend in a child process. See [isolation](./isolation.md). |
 | `cacheDir` | string | see [configuration](./configuration.md) | Where models are stored. |
-| `offline` | boolean | `false` | Never download. `LOCAL_LLM_OFFLINE=1` also turns this on. |
+| `offline` | boolean | `false` | Never download. `TINY_LLM_OFFLINE=1` also turns this on. |
 | `autoDownload` | boolean | `true` | Download a missing registry model on first use. |
 | `acceptLicense` | boolean | `false` | Required for a model whose license is not Apache-2.0 or MIT. |
 | `onEvent` | `(event) => void` | none | Local event hook. Nothing is sent anywhere. Errors thrown by the hook are ignored. |
 
-## `LocalLLM`
+## `TinyLLM`
 
 ### `ready(): Promise<ModelInfo>`
 
@@ -99,7 +99,7 @@ interface GenerateResult {
 
 ## Errors
 
-Every error from the public API is an `LocalLLMError` with a `code`, a non-empty `hint`, and an optional `cause`. Use `isLocalLLMError(err)` to test for it.
+Every error from the public API is an `TinyLLMError` with a `code`, a non-empty `hint`, and an optional `cause`. Use `isTinyLLMError(err)` to test for it.
 
 | Code | When |
 | --- | --- |
@@ -118,5 +118,5 @@ Every error from the public API is an `LocalLLMError` with a `code`, a non-empty
 
 ## Exports
 
-- Values: `createLocalLLM`, `LocalLLMError`, `isLocalLLMError`, `LOCAL_LLM_ERROR_CODES`.
-- Types: `LocalLLM`, `LocalLLMOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `ModelInfo`, `LocalLLMEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `LocalLLMErrorCode`.
+- Values: `createTinyLLM`, `TinyLLMError`, `isTinyLLMError`, `TINY_LLM_ERROR_CODES`.
+- Types: `TinyLLM`, `TinyLLMOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `ModelInfo`, `TinyLLMEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `TinyLLMErrorCode`.

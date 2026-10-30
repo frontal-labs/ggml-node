@@ -56,10 +56,10 @@ The plan lists `registry/cache.ts` and `registry/download.ts`. The offline, `aut
 
 The plan does not define the policy precisely. `truncate-start` drops the oldest removable message first. `truncate-middle` keeps the first removable message and drops the one nearest the middle, so the start of the conversation and the most recent turns survive. In both policies the system message and the last user message are never removed.
 
-## D11: Errors from the backend become `LocalLLMError` (M3)
+## D11: Errors from the backend become `TinyLLMError` (M3)
 
-**Plan:** every thrown error from the public API must be an `LocalLLMError`.
-**Change:** anything the backend throws, from a request or from load, is wrapped as `BACKEND_CRASHED` (for requests) or with the same code (for load). The hint points to `local-llm doctor`. The original error is kept on `cause`.
+**Plan:** every thrown error from the public API must be an `TinyLLMError`.
+**Change:** anything the backend throws, from a request or from load, is wrapped as `BACKEND_CRASHED` (for requests) or with the same code (for load). The hint points to `tiny-llm doctor`. The original error is kept on `cause`.
 
 ## D12: Abort semantics (M3)
 
@@ -95,17 +95,17 @@ The grammar guarantees the shape. The output is then checked with the user's Zod
 
 ## D18: Structured-output acceptance (M4)
 
-`test/e2e/structured.e2e.test.ts` runs 50 classification and 50 nested-extraction calls against the default model (`LOCAL_LLM_E2E=1`). All 100 parse and validate. Run time was about 65 s on this machine.
+`test/e2e/structured.e2e.test.ts` runs 50 classification and 50 nested-extraction calls against the default model (`TINY_LLM_E2E=1`). All 100 parse and validate. Run time was about 65 s on this machine.
 
 ## D19: AI SDK provider behaviour (M5)
 
 - Unsupported input (images, files, tool calls and results, tool definitions, reasoning in history) is dropped with an `unsupported` warning. It is never a crash.
 - `toolChoice` of `required` or `tool` throws `INVALID_OPTIONS`, because a tool call cannot be honoured in v1. `auto` and `none` are accepted.
-- `responseFormat: json` with a schema uses the grammar path (`local-llm.object`), so the output is guaranteed to match. Without a schema, the provider asks for JSON in the prompt and warns that the output is not guaranteed.
+- `responseFormat: json` with a schema uses the grammar path (`tiny-llm.object`), so the output is guaranteed to match. Without a schema, the provider asks for JSON in the prompt and warns that the output is not guaranteed.
 - With a JSON schema, `doStream` emits the whole object as one `text-delta`. It is not streamed token by token, because the grammar path has no streaming variant in v1.
 - Abort in `doStream` maps to `finish` with `unified: "other"`, `raw: "abort"`.
 - Stream parts follow `LanguageModelV4StreamPart`: `stream-start`, `text-start`, `text-delta`*, `text-end`, `finish`. Errors arrive as an `error` part. A unit test checks the order.
-- `local-llm(modelId, settings)` shares one provider per settings value. Functions in settings (such as `onEvent`) are left out of that key, so two calls with different callbacks but otherwise equal settings share an instance.
+- `tiny-llm(modelId, settings)` shares one provider per settings value. Functions in settings (such as `onEvent`) are left out of that key, so two calls with different callbacks but otherwise equal settings share an instance.
 
 ## D20: AI SDK v7 deprecations in the example (M5)
 
@@ -117,8 +117,8 @@ The grammar guarantees the shape. The output is then checked with the user's Zod
 
 ## D22: Package name, repo and import paths
 
-- The published package is `local-llm`. Imports are `local-llm`, `local-llm/ai` and `local-llm/testing`. The plan's `local-llm` specifiers no longer apply.
-- Repository: `frontal-labs/local-llm`. The `origin` remote is set to `git@github.com:frontal-labs/local-llm.git`. The repository was not visible to the account used here (GitHub returned 404), so nothing has been pushed. Create it, or grant access, before the first push.
+- The published package is `tiny-llm`. Imports are `tiny-llm`, `tiny-llm/ai` and `tiny-llm/testing`. The plan's `tiny-llm` specifiers no longer apply.
+- Repository: `frontal-labs/tiny-llm`. The `origin` remote is set to `git@github.com:frontal-labs/tiny-llm.git`. The repository was not visible to the account used here (GitHub returned 404), so nothing has been pushed. Create it, or grant access, before the first push.
 - No publish has been run. The release workflow publishes from `main` with `NPM_TOKEN` and npm provenance. The first publish needs approval.
 
 ## D23: Bun instead of pnpm, and vitest kept
@@ -127,7 +127,7 @@ Bun (1.3.14) is the package manager and script runner (`bun.lock`, `packageManag
 
 ## D24: `zod` is a runtime dependency, and the import cost is measured
 
-`zod` moved from a peer to a regular dependency, because `src/env.ts`, `src/core/schemas.ts` and the CLI use it at runtime. A cold `import("local-llm")` takes about 0.45 s on this machine, and zod classic is about 0.27 s of that. `zod/mini` loads in about 0.16 s and would cut the cost further. It is not used yet, because it changes every schema. This is a follow-up.
+`zod` moved from a peer to a regular dependency, because `src/env.ts`, `src/core/schemas.ts` and the CLI use it at runtime. A cold `import("tiny-llm")` takes about 0.45 s on this machine, and zod classic is about 0.27 s of that. `zod/mini` loads in about 0.16 s and would cut the cost further. It is not used yet, because it changes every schema. This is a follow-up.
 
 ## D25: Ultracite is the lint preset
 
@@ -137,15 +137,15 @@ Clearing the strict preset needed three kinds of change. Mechanical fixes went i
 
 ## D26: `process.env` is read in one place
 
-`src/env.ts` declares every variable the library reads, with `@t3-oss/env-core` and zod. Other modules receive the env object. A value that cannot be parsed fails loudly: `LOCAL_LLM_OFFLINE=maybe` throws `INVALID_OPTIONS` instead of meaning false.
+`src/env.ts` declares every variable the library reads, with `@t3-oss/env-core` and zod. Other modules receive the env object. A value that cannot be parsed fails loudly: `TINY_LLM_OFFLINE=maybe` throws `INVALID_OPTIONS` instead of meaning false.
 
 ## D27: CLI on commander
 
 The CLI uses commander. Choice arguments are validated by commander, so an unknown model id is a usage error with exit code 1. Commander's wording for usage errors differs from the earlier hand-written messages. The exit codes did not change.
 
-## D28: `local-llm/testing` loads no native code
+## D28: `tiny-llm/testing` loads no native code
 
-`createMockLocalLLM` and `mockModel` run the real core with a deterministic backend. A test runs the entry in a child process, with a loader hook that records any resolution of `node-llama-cpp`. The hook was checked to catch a static import of that package.
+`createMockTinyLLM` and `mockModel` run the real core with a deterministic backend. A test runs the entry in a child process, with a loader hook that records any resolution of `node-llama-cpp`. The hook was checked to catch a static import of that package.
 
 ## D29: Process isolation
 
@@ -182,11 +182,11 @@ Ultracite's CLI does not read `ultracite.json`. The file is the single record of
 
 ## D34: Install scripts
 
-local-llm has no install script. Its dependency `node-llama-cpp` runs its own `postinstall`, which checks the native binary for the platform. The plan's "no postinstall" rule therefore holds for this package and not for its dependency tree. The docs say so.
+tiny-llm has no install script. Its dependency `node-llama-cpp` runs its own `postinstall`, which checks the native binary for the platform. The plan's "no postinstall" rule therefore holds for this package and not for its dependency tree. The docs say so.
 
 ## D35: Docker example builds from a packed tarball
 
-The image installs `local-llm-<version>.tgz` from `bun pm pack`, so it builds before the package is on npm. It has not been built in this repository, because the Docker daemon was not running.
+The image installs `tiny-llm-<version>.tgz` from `bun pm pack`, so it builds before the package is on npm. It has not been built in this repository, because the Docker daemon was not running.
 
 ## D36: Documentation matches the code
 

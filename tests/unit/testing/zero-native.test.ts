@@ -7,7 +7,7 @@ const registerHook = fileURLToPath(
 );
 const entry = fileURLToPath(new URL("../../helpers/import-testing.ts", import.meta.url));
 
-describe("local-llm/testing", () => {
+describe("tiny-llm/testing", () => {
   it("imports without loading node-llama-cpp", () => {
     // A fresh process, so nothing loaded by other tests can hide a native import.
     const run = spawnSync(process.execPath, ["--import", "tsx", "--import", registerHook, entry], {

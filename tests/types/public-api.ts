@@ -1,6 +1,6 @@
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
-import { createLocalLLM, type GenerateResult, type LocalLLM, type ObjectResult } from "@/index.js";
+import { createTinyLLM, type GenerateResult, type ObjectResult, type TinyLLM } from "@/index.js";
 import type { ModelId } from "@/registry/models.js";
 
 /**
@@ -11,13 +11,13 @@ export async function assertPublicTypes(): Promise<void> {
   expectTypeOf<ModelId>().toEqualTypeOf<"qwen2.5-0.5b" | "qwen2.5-1.5b" | "smollm2-360m">();
 
   // @ts-expect-error not a registry model
-  createLocalLLM({ model: "gpt-4o" });
-  createLocalLLM({ model: "qwen2.5-0.5b" });
-  createLocalLLM({ model: { path: "./models/custom.gguf" } });
-  // @ts-expect-error maxTokens is not an LocalLLMOptions field
-  createLocalLLM({ maxTokens: 10, model: "qwen2.5-0.5b" });
+  createTinyLLM({ model: "gpt-4o" });
+  createTinyLLM({ model: "qwen2.5-0.5b" });
+  createTinyLLM({ model: { path: "./models/custom.gguf" } });
+  // @ts-expect-error maxTokens is not an TinyLLMOptions field
+  createTinyLLM({ maxTokens: 10, model: "qwen2.5-0.5b" });
 
-  const ai = null as unknown as LocalLLM;
+  const ai = null as unknown as TinyLLM;
   expectTypeOf(ai.generate).returns.resolves.toEqualTypeOf<GenerateResult>();
   expectTypeOf(ai.countTokens).returns.resolves.toEqualTypeOf<number>();
   expectTypeOf(ai.unload).returns.resolves.toEqualTypeOf<void>();
@@ -34,5 +34,5 @@ export async function assertPublicTypes(): Promise<void> {
   expectTypeOf(named.object).toEqualTypeOf<{ name: string }>();
 
   // @ts-expect-error exactOptionalPropertyTypes: optional fields reject explicit undefined
-  createLocalLLM({ contextSize: undefined, model: "qwen2.5-0.5b" });
+  createTinyLLM({ contextSize: undefined, model: "qwen2.5-0.5b" });
 }

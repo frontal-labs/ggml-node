@@ -8,16 +8,16 @@ From the repository root:
 
 ```sh
 bun run build
-bun pm pack                               # writes local-llm-<version>.tgz
-docker build -f examples/docker/Dockerfile -t local-llm-example .
-docker run --rm -p 3000:3000 local-llm-example
+bun pm pack                               # writes tiny-llm-<version>.tgz
+docker build -f examples/docker/Dockerfile -t tiny-llm-example .
+docker run --rm -p 3000:3000 tiny-llm-example
 curl -s localhost:3000/generate -H 'content-type: application/json' -d '{"prompt":"Say hi."}'
 ```
 
-The image installs the packed tarball, so it builds before `local-llm` is on npm. Once it is published, replace the two `COPY local-llm-*.tgz` / `npm install` steps with `npm install local-llm`.
+The image installs the packed tarball, so it builds before `tiny-llm` is on npm. Once it is published, replace the two `COPY tiny-llm-*.tgz` / `npm install` steps with `npm install tiny-llm`.
 
 ## Notes
 
-- `LOCAL_LLM_OFFLINE=1` makes the running container refuse to download. The model must already be in the image, which the `model` stage guarantees.
+- `TINY_LLM_OFFLINE=1` makes the running container refuse to download. The model must already be in the image, which the `model` stage guarantees.
 - The `model` stage needs network access during `docker build`, to download the 491 MB model.
 - This example has not been built in this repository. The Docker daemon was not running when it was prepared. Build it on your machine before you rely on it.
