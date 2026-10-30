@@ -1,6 +1,6 @@
 /**
  * Inboard with the AI SDK: generateText, streamText and generateObject.
- * Run from the repo root: `pnpm build && pnpm --filter @inboard/example-ai-sdk start`
+ * Run from the repo root: `bun run build && bun --filter @inboard/example-ai-sdk start`
  */
 import { generateObject, generateText, streamText } from "ai";
 import { inboard } from "inboard-sdk/ai";

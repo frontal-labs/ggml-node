@@ -1,0 +1,29 @@
+---
+name: inboard-operations
+description: Operate inboard-sdk on a real machine or in a container. Covers pulling and verifying models, the doctor and bench commands, air-gapped installs, Docker and Electron, and reading the CLI exit codes.
+---
+
+# inboard-operations
+
+## Commands
+
+```sh
+npx inboard pull qwen2.5-0.5b          # download and verify (resumes if interrupted)
+npx inboard list                       # cache state and licenses
+npx inboard doctor                     # platform, memory, cache, and a backend check
+npx inboard bench qwen2.5-0.5b --tokens 128
+npx inboard cache path
+```
+
+Exit codes: `0` success, `1` usage error, `2` environment error or a failed `doctor` check.
+
+## Rules
+
+- Run `doctor` first when something fails. Its `fix:` lines are specific.
+- `doctor` warns when the default model is not cached. That is not a failure.
+- For air-gapped machines, pull on a connected machine with `--dir`, copy the file, set `INBOARD_CACHE_DIR` and `INBOARD_OFFLINE=1`, and run `pull` on the target to verify it.
+- In Docker, pull the model in its own image layer, and set `INBOARD_OFFLINE=1` at runtime. See `examples/docker`.
+- In Electron, unpack the native binaries from the asar archive and read the model from `process.resourcesPath`. Use `isolation: "process"`. See `examples/electron`.
+- Serverless functions that are zip-based cannot hold a model. Use a container image.
+- Benchmarks depend heavily on the machine's free memory. Run `bench` on a quiet machine, and record the conditions. See `docs/benchmarks.md`.
+- Do not publish to npm from a workstation. The release workflow publishes from `main` after approval.

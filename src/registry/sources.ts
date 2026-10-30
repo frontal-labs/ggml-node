@@ -1,7 +1,7 @@
 /**
  * Hand-maintained registry sources. `scripts/compute-checksums.ts` downloads each entry,
  * computes its SHA-256 and size, reads the context length from the GGUF metadata, and
- * writes `src/registry/models.ts`. Edit this file, then run `pnpm registry:generate`.
+ * writes `src/registry/models.ts`. Edit this file, then run `bun run registry:generate`.
  *
  * Every entry must point to a real file. Do not add an entry until its URL resolves.
  */

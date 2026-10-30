@@ -1,0 +1,21 @@
+// A minimal HTTP server for the container. It needs the model cached in INBOARD_CACHE_DIR.
+import { createServer } from "node:http";
+import { createInboard } from "inboard-sdk";
+
+const ai = createInboard({ model: "qwen2.5-0.5b" });
+
+createServer(async (req, res) => {
+  if (req.method !== "POST" || req.url !== "/generate") {
+    res.writeHead(404).end();
+    return;
+  }
+  let raw = "";
+  for await (const chunk of req) {
+    raw += chunk;
+  }
+  const { prompt } = JSON.parse(raw || "{}");
+  const result = await ai.generate({ maxTokens: 64, prompt: String(prompt ?? "Hello") });
+  res
+    .writeHead(200, { "content-type": "application/json" })
+    .end(JSON.stringify({ text: result.text }));
+}).listen(3000, () => console.log("listening on :3000"));

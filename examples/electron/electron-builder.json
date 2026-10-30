@@ -1,0 +1,9 @@
+{
+  "appId": "com.example.inboard",
+  "asar": true,
+  "asarUnpack": [
+    "**/node_modules/node-llama-cpp/**",
+    "**/node_modules/@node-llama-cpp/**"
+  ],
+  "extraResources": [{ "from": "models", "to": "models" }]
+}

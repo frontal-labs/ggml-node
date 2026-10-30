@@ -4,7 +4,7 @@ import { createInboard, type GenerateResult, type Inboard, type ObjectResult } f
 import type { ModelId } from "@/registry/models.js";
 
 /**
- * Compile-time assertions for the Section 3 contract. `tsc` (pnpm typecheck) checks
+ * Compile-time assertions for the Section 3 contract. `tsc` (bun run typecheck) checks
  * them. The function is exported but never called at runtime, so the M1 stubs never run.
  */
 export async function assertPublicTypes(): Promise<void> {

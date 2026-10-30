@@ -1,0 +1,13 @@
+{
+  "name": "@inboard/example-electron",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "inboard-sdk": "file:../.."
+  }
+}
