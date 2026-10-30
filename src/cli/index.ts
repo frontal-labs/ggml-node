@@ -1,3 +1,12 @@
-// M1 stub: the CLI lands in M2 (pull, list, cache) and M7 (doctor, bench, run).
-process.stderr.write("inboard: CLI not implemented yet\n");
-process.exitCode = 1;
+import { runCli } from "./run.js";
+
+const code = await runCli(process.argv.slice(2), {
+  stdout: (text) => {
+    process.stdout.write(text);
+  },
+  stderr: (text) => {
+    process.stderr.write(text);
+  },
+  stderrIsTTY: process.stderr.isTTY,
+});
+process.exitCode = code;

@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest";
+import { MODEL_IDS, MODELS } from "../../../src/registry/models.js";
+import { MODEL_SOURCES } from "../../../src/registry/sources.js";
+
+describe("registry manifest", () => {
+  it("has one generated entry per source, with matching ids and files", () => {
+    expect(MODEL_IDS).toEqual(MODEL_SOURCES.map((s) => s.id));
+    for (const source of MODEL_SOURCES) {
+      expect(MODELS[source.id].file).toBe(source.file);
+      expect(MODELS[source.id].hfRepo).toBe(source.hfRepo);
+    }
+  });
+
+  it("has a verifiable URL, SHA-256 and size for every entry", () => {
+    for (const entry of Object.values(MODELS)) {
+      expect(entry.url).toBe(`https://huggingface.co/${entry.hfRepo}/resolve/main/${entry.file}`);
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry.sizeBytes).toBeGreaterThan(0);
+      expect(entry.contextLength).toBeGreaterThan(0);
+      expect(entry.ramEstimateBytes).toBeGreaterThan(entry.sizeBytes);
+    }
+  });
+
+  it("has a license and license URL for every entry", () => {
+    for (const entry of Object.values(MODELS)) {
+      expect(entry.license.length).toBeGreaterThan(0);
+      expect(entry.licenseUrl).toMatch(/^https:\/\//);
+    }
+  });
+
+  it("keeps the default model in the registry", () => {
+    expect(MODEL_IDS).toContain("qwen2.5-0.5b");
+  });
+});
