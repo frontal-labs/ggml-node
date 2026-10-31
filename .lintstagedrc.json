@@ -1,0 +1,4 @@
+{
+  "$schema": "https://json.schemastore.org/lintstagedrc.json",
+  "*.{ts,tsx,js,mjs,cjs,json}": ["bun biome check --write --"]
+}

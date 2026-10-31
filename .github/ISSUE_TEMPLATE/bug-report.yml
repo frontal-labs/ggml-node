@@ -1,0 +1,32 @@
+---
+name: Bug report
+about: Something is broken or behaves unexpectedly
+labels: bug
+---
+
+## Describe the bug
+
+<!-- What happened, and what did you expect to happen? -->
+
+## To reproduce
+
+```sh
+# Steps that lead to the bug
+```
+
+## Environment
+
+- tiny-llm version:
+- Node.js version:
+- OS / platform:
+- Model used (e.g. `qwen2.5-0.5b`):
+
+## Logs or output
+
+```
+ Paste output here. Redact any secrets.
+```
+
+## What you tried
+
+<!-- Things you already checked: `tiny-llm doctor`, cache state, offline mode, etc. -->

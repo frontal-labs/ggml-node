@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Format staged files, then run lint-staged (biome on touched files).
+npx --no lint-staged
