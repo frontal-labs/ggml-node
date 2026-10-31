@@ -23,6 +23,7 @@ export const ggmlNodeOptionsSchema = z.object({
   contextSize: z.number().int().positive().optional(),
   gpu: z.union([z.literal("auto"), z.literal(false)]).optional(),
   isolation: z.enum(["none", "process"]).optional(),
+  kind: z.enum(["generation", "embedding"]).optional(),
   maxConcurrency: z.number().int().min(1).optional(),
   maxQueue: z.number().int().min(0).optional(),
   model: modelSourceSchema,
@@ -49,6 +50,12 @@ export const generateOptionsSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   topK: z.number().int().min(0).optional(),
   topP: z.number().gt(0).max(1).optional(),
+});
+
+const nonEmptyText = z.string().min(1, "must not be empty");
+
+export const embedOptionsSchema = z.object({
+  input: z.union([nonEmptyText, z.array(nonEmptyText).min(1, "must not be an empty list")]),
 });
 
 /** `pull` and `list` flags, as the CLI parses them. */

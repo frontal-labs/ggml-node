@@ -36,6 +36,7 @@ describe("AI SDK integration (fake backend)", () => {
           cgroupLimitBytes: async () => undefined,
         },
         readMeta: async () => ({
+          kind: "generation",
           shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
           sizeBytes: 100,
           trainContextSize: 4096,

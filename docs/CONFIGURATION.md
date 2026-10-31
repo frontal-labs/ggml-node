@@ -15,6 +15,7 @@ The library reads its environment through one module (`src/env.ts`), validated w
 | `XDG_CACHE_HOME` | Linux cache location | Default `~/.cache`. Used only when `GGML_NODE_CACHE_DIR` is unset. |
 | `LOCALAPPDATA` | Windows cache location | Default `%USERPROFILE%\AppData\Local`. |
 | `GGML_NODE_E2E` | Test suites only | Set to `1` to run the tests that need the real model. |
+| `GGML_NODE_EMBED_MODEL` | Test suites only | Path to an embedding GGUF file. The embedding suite runs only when this and `GGML_NODE_E2E=1` are set. |
 
 Precedence for the cache directory: `cacheDir` option, then `GGML_NODE_CACHE_DIR`, then the OS default.
 

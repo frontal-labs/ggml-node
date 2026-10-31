@@ -47,7 +47,12 @@ describe("createGgmlNode", () => {
         cgroupCurrentBytes: async () => undefined,
         cgroupLimitBytes: async () => undefined,
       },
-      readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
+      readMeta: async () => ({
+        kind: "generation",
+        shape: SHAPE,
+        sizeBytes: 1000,
+        trainContextSize: 4096,
+      }),
       ...depsOverride,
     };
     const ai: GgmlNode = createGgmlNodeWithDeps(

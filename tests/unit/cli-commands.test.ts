@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIO, EXIT, runCli } from "@/cli/run.js";
-import { createMockGgmlNode } from "@/testing/index.js";
+import { createMockGgmlNode } from "../mocks/index.js";
 
 interface Captured {
   err: string;

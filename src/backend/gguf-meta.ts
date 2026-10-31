@@ -2,8 +2,11 @@
 import { stat } from "node:fs/promises";
 import { GgmlNodeError } from "@/core/errors.js";
 import type { KvShape } from "@/core/memory.js";
+import type { ModelKind } from "@/core/types.js";
 
 export interface ModelMeta {
+  /** `embedding` when the file declares a pooling type, which only embedding models do. */
+  kind: ModelKind;
   shape: KvShape;
   sizeBytes: number;
   trainContextSize: number;
@@ -44,6 +47,7 @@ export async function readModelMeta(path: string): Promise<ModelMeta> {
     typeof attention.value_length === "number" ? attention.value_length : embedding / headCount;
 
   return {
+    kind: block.pooling_type === undefined ? "generation" : "embedding",
     shape: { blockCount, headCountKv, keyLength, valueLength },
     sizeBytes,
     trainContextSize,

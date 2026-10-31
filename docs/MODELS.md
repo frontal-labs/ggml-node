@@ -31,3 +31,22 @@ A model with a license other than Apache-2.0 or MIT needs `acceptLicense: true` 
 ## Custom models
 
 Pass `{ path: "./models/my-model.gguf" }` to use any GGUF file. Custom models are not verified, their license is reported as `unknown`, and their context length comes from the file's metadata.
+
+## Embedding models
+
+An embedding model is loaded with the same `{ path }` option. Its kind is read from the GGUF metadata: a file that declares a `pooling_type` is an embedding model, and every other file is a generation model. Check the result with `info().kind`.
+
+```ts
+const node = createGgmlNode({ model: { path: "./models/bge-small-en-v1.5-q8_0.gguf" } });
+const { embeddings, dimensions } = await node.embed({ input: ["first text", "second text"] });
+```
+
+Set `kind` when the metadata is missing or wrong:
+
+```ts
+createGgmlNode({ kind: "embedding", model: { path: "./models/odd-file.gguf" } });
+```
+
+Only GGUF files work here. Tested with `bge-small-en-v1.5` (Q8_0, 384 dimensions, 512-token context).
+
+The registry also has `bge-small-en-v1.5` (see the table in the README), so `createGgmlNode({ model: "bge-small-en-v1.5" })` downloads and verifies it like any other registry model. Its license is MIT (BAAI's original weights are MIT too, and this is a Q8_0 conversion of them).

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createIsolatedBackend } from "@/backend/isolated/host.js";
+import { createIsolatedBackend } from "@/backend/host.js";
 import { createGgmlNodeWithDeps, type GgmlNodeDeps } from "@/core/ggml-node.js";
 import type { GgmlNodeOptions } from "@/core/types.js";
 import { env } from "@/env.js";
@@ -13,9 +13,7 @@ import { env } from "@/env.js";
  */
 const enabled = env.GGML_NODE_E2E === "1";
 const WHITESPACE = /\s+/u;
-const WORKER = fileURLToPath(
-  new URL("../../dist/backend/isolated/worker-main.js", import.meta.url),
-);
+const WORKER = fileURLToPath(new URL("../../dist/backend/worker-main.js", import.meta.url));
 const workerBuilt = existsSync(WORKER);
 
 function isolatedLocalLLM(options: Omit<GgmlNodeOptions, "isolation">) {

@@ -1,7 +1,7 @@
-import type { HostMessage, WireError, WorkerMessage } from "@/backend/isolated/protocol.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
-import type { Backend, JsonGrammar } from "@/backend/types.js";
+import type { HostMessage, WireError, WorkerMessage } from "@/backend/protocol.js";
 import { GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
+import type { Backend, JsonGrammar } from "@/types.js";
 
 /**
  * The worker side of process isolation. It owns one backend and answers the host's requests. If the
@@ -13,6 +13,15 @@ export function runWorker(factory: () => Backend = createLlamaCppBackend): void 
   let backend: Backend | undefined;
   const grammars = new Map<string, JsonGrammar>();
   const controllers = new Map<number, AbortController>();
+  const abortable = async <T>(id: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    const controller = new AbortController();
+    controllers.set(id, controller);
+    try {
+      return await run(controller.signal);
+    } finally {
+      controllers.delete(id);
+    }
+  };
 
   const reply = (message: WorkerMessage) => {
     if (process.send) {
@@ -47,6 +56,13 @@ export function runWorker(factory: () => Backend = createLlamaCppBackend): void 
       }
       case "countPrompt": {
         const result = await current().countPromptTokens(message.messages);
+        reply({ id: message.id, ok: true, result, type: "reply" });
+        return;
+      }
+      case "embed": {
+        const result = await abortable(message.id, (signal) =>
+          current().embed(message.inputs, signal),
+        );
         reply({ id: message.id, ok: true, result, type: "reply" });
         return;
       }

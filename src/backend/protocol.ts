@@ -1,6 +1,6 @@
-import type { BackendLoadOptions, BackendRequest } from "@/backend/types.js";
 import type { GgmlNodeErrorCode } from "@/core/errors.js";
 import type { JsonSchemaObject, Message } from "@/core/types.js";
+import type { BackendLoadOptions, BackendRequest } from "@/types.js";
 
 /**
  * Typed IPC protocol between the host (parent process) and the worker (child process that owns the
@@ -14,6 +14,7 @@ export type HostMessage =
   | { type: "load"; id: RequestId; options: BackendLoadOptions }
   | { type: "count"; id: RequestId; text: string }
   | { type: "countPrompt"; id: RequestId; messages: Message[] }
+  | { type: "embed"; id: RequestId; inputs: string[] }
   | {
       type: "generate";
       id: RequestId;

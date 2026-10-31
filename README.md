@@ -62,6 +62,19 @@ const ai = createMockGgmlNode({ respond: "a fixed answer" });
 
 Any other GGUF file works through `createGgmlNode({ model: { path } })`.
 
+## Embeddings
+
+An embedding model turns text into vectors for search and similarity. `bge-small-en-v1.5` is in the registry (384 dimensions, MIT). Call `embed` on it:
+
+```ts
+const embedder = createGgmlNode({ model: "bge-small-en-v1.5" });
+const { embeddings, dimensions } = await embedder.embed({
+  input: ["a cat on a mat", "a kitten on a rug"],
+});
+```
+
+Any other embedding GGUF works through `{ path }`. Each handle holds one model: `generate` needs a generation model, and `embed` needs an embedding model. With the AI SDK, use `ggmlEmbedding("bge-small-en-v1.5")`. See [models](docs/MODELS.md#embedding-models) and [the AI SDK provider](docs/AI_SDK.md#embeddings).
+
 ## Command line
 
 ```sh
@@ -80,7 +93,7 @@ npx ggml-node doctor                            # checks the machine and the bac
 - [Structured output](./docs/STRUCTURED_OUTPUT.md)
 - [Models](./docs/MODELS.md) · [Configuration](./docs/CONFIGURATION.md) · [CLI](./docs/CLI.md)
 - [Process isolation](./docs/ISOLATION.md) · [Testing](./docs/TESTING.md) · [Deployment](./docs/DEPLOYMENT.md)
-- [Benchmarks](./docs/BENCHMARKS.md) · [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- [Benchmarks](./BENCHMARKS.md) · [Troubleshooting](./docs/TROUBLESHOOTING.md)
 - [Development](./docs/DEVELOPMENT.md)
 
 Examples live in [`examples/`](./examples), and agent skills in [`skills/`](./skills/ggml-node).

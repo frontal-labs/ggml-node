@@ -112,7 +112,12 @@ describe("GgmlNodeLanguageModel", () => {
           cgroupCurrentBytes: async () => undefined,
           cgroupLimitBytes: async () => undefined,
         },
-        readMeta: async () => ({ shape: SHAPE, sizeBytes: 100, trainContextSize: 4096 }),
+        readMeta: async () => ({
+          kind: "generation",
+          shape: SHAPE,
+          sizeBytes: 100,
+          trainContextSize: 4096,
+        }),
       },
     );
     return languageModelFor("qwen2.5-0.5b", llm);

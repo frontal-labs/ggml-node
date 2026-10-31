@@ -45,4 +45,14 @@ export const MODEL_SOURCES = [
     licenseUrl: APACHE_2,
     notes: "Smallest option. Q8_0 because the Q4_K_M file is not published in this repo.",
   },
+  {
+    displayName: "BGE Small English v1.5 (Q8_0)",
+    file: "bge-small-en-v1.5-q8_0.gguf",
+    hfRepo: "CompendiumLabs/bge-small-en-v1.5-gguf",
+    id: "bge-small-en-v1.5",
+    license: "MIT",
+    licenseUrl: "https://opensource.org/licenses/MIT",
+    notes:
+      "Embedding model: use embed(), not generate(). 384 dimensions, 512-token context. Q8_0 build of BAAI/bge-small-en-v1.5.",
+  },
 ] as const satisfies readonly RegistrySource[];

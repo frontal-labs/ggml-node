@@ -16,7 +16,7 @@ export default defineConfig([
     entry: {
       "ai/index": "src/ai/index.ts",
       index: "src/index.ts",
-      "testing/index": "src/testing/index.ts",
+      "testing/index": "tests/mocks/index.ts",
     },
     splitting: true,
   },
@@ -33,7 +33,7 @@ export default defineConfig([
     ...shared,
     clean: false,
     dts: false,
-    entry: { "backend/isolated/worker-main": "src/backend/isolated/worker-main.ts" },
+    entry: { "backend/worker-main": "src/backend/worker-main.ts" },
     splitting: true,
   },
 ]);

@@ -30,8 +30,8 @@ The mock counts tokens as whitespace-separated words. Its numbers are for testin
 
 | Command | What it runs | Needs |
 | --- | --- | --- |
-| `bun run test` | `tests/unit`: 151 tests | nothing. No network, no real model. |
-| `bun run test:e2e` | `tests/e2e`: 9 real-model tests (generation, structured output, process isolation) | `GGML_NODE_E2E=1`, the default model cached, and `bun run build` for the isolation suite |
+| `bun run test` | `tests/unit`: 168 tests | nothing. No network, no real model. |
+| `bun run test:e2e` | `tests/e2e`: real-model tests (generation, structured output, process isolation, embeddings) | `GGML_NODE_E2E=1`, the default model cached, and `bun run build` for the isolation suite. The embedding tests also need `GGML_NODE_EMBED_MODEL` set to an embedding GGUF file. |
 | `bun run verify` | lint, typecheck, unit tests, build | nothing |
 
 Unit tests use `tests/helpers/fixture-server.ts` for HTTP (a local server with Range support) and `tests/helpers/fake-backend.ts` for inference. A compile-time check of the public API lives in `tests/types/public-api.ts`, and `bun run typecheck` enforces it.

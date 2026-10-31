@@ -25,5 +25,5 @@ Exit codes: `0` success, `1` usage error, `2` environment error or a failed `doc
 - In Docker, pull the model in its own image layer, and set `LOCAL_LLM_OFFLINE=1` at runtime. See `examples/docker`.
 - In Electron, unpack the native binaries from the asar archive and read the model from `process.resourcesPath`. Use `isolation: "process"`. See `examples/electron`.
 - Serverless functions that are zip-based cannot hold a model. Use a container image.
-- Benchmarks depend heavily on the machine's free memory. Run `bench` on a quiet machine, and record the conditions. See `docs/BENCHMARKS.md`.
+- Benchmarks depend heavily on the machine's free memory. Run `bench` on a quiet machine, and record the conditions. See `BENCHMARKS.md`.
 - Do not publish to npm from a workstation. The release workflow publishes from `main` after approval.

@@ -1,7 +1,7 @@
 import { generateObject, generateText, streamText } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMockGgmlNode, mockModel } from "@/testing/index.js";
+import { createMockGgmlNode, mockModel } from "../../mocks/index.js";
 
 describe("createMockGgmlNode", () => {
   it("echoes the last user message by default", async () => {

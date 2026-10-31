@@ -1,4 +1,4 @@
-import type { FinishReason, JsonSchemaObject, Message, Usage } from "@/core/types.js";
+import type { FinishReason, JsonSchemaObject, Message, ModelKind, Usage } from "@/core/types.js";
 
 /**
  * The inference backend. The core scheduler and public API only talk to this interface, so a
@@ -7,6 +7,8 @@ import type { FinishReason, JsonSchemaObject, Message, Usage } from "@/core/type
 export interface BackendLoadOptions {
   contextSize: number;
   gpu: "auto" | false;
+  /** `embedding` loads an embedding context. It has no generation sequences. */
+  kind: ModelKind;
   path: string;
   sequences: number;
   threads?: number | undefined;
@@ -46,9 +48,17 @@ export interface BackendResult {
   usage: Usage;
 }
 
+/** Result of embedding a batch. Vectors are in input order. */
+export interface BackendEmbedResult {
+  inputTokens: number;
+  vectors: number[][];
+}
+
 /** What the backend knows about a loaded model. The core adds the registry id and license. */
 export interface BackendLoadResult {
   contextSize: number;
+  /** Length of each embedding vector. Set only when the model was loaded as `embedding`. */
+  dimensions?: number | undefined;
   gpu: string | false;
   path: string;
   sizeBytes: number;
@@ -63,6 +73,11 @@ export interface Backend {
   countPromptTokens: (messages: Message[]) => Promise<number>;
   /** Token count for a plain string, without any chat template. */
   countTokens: (text: string) => Promise<number>;
+  /**
+   * Embeds each input on its own. Inputs that do not fit the context reject with `CONTEXT_OVERFLOW`.
+   * Checks `signal` between inputs and rejects with `ABORTED`.
+   */
+  embed: (inputs: string[], signal?: AbortSignal) => Promise<BackendEmbedResult>;
   /**
    * Generates on the given sequence index. `onDelta` receives text as it is produced.
    * Resolves with `finishReason: "abort"` when the signal fires during generation.

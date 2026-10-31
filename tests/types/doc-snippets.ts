@@ -26,6 +26,17 @@ export async function readmeQuickstart(): Promise<void> {
   void check;
 }
 
+export async function readmeEmbeddings(): Promise<void> {
+  const embedder = createGgmlNode({ model: { path: "./models/bge-small-en-v1.5-q8_0.gguf" } });
+  const { embeddings, dimensions } = await embedder.embed({
+    input: ["a cat on a mat", "a kitten on a rug"],
+  });
+  const [first] = embeddings;
+  const size: number = dimensions;
+  void first;
+  void size;
+}
+
 export async function readmeAiSdk(): Promise<void> {
   const { text } = await generateText({ model: ggmlNode("qwen2.5-0.5b"), prompt: "Hello" });
   void text;

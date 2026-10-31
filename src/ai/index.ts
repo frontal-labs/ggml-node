@@ -1,5 +1,5 @@
-import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { languageModelFor } from "@/ai/model.js";
+import type { EmbeddingModelV4, LanguageModelV4 } from "@ai-sdk/provider";
+import { embeddingModelFor, languageModelFor } from "@/ai/model.js";
 import { createGgmlNode } from "@/core/ggml-node.js";
 import type { GgmlNode, GgmlNodeOptions, ModelId } from "@/core/types.js";
 
@@ -16,6 +16,8 @@ export type { ModelId } from "@/registry/models.js";
 export type GgmlNodeProviderSettings = Omit<GgmlNodeOptions, "model">;
 
 export interface GgmlNodeProvider {
+  /** An embedding model for `embedMany` and `embed`. The model must be an embedding model. */
+  embeddingModel: (modelId: ModelId) => EmbeddingModelV4;
   languageModel: (modelId: ModelId) => LanguageModelV4;
   (modelId: ModelId): LanguageModelV4;
 }
@@ -28,13 +30,25 @@ export function ggmlNode(
   modelId: ModelId,
   settings: GgmlNodeProviderSettings = {},
 ): LanguageModelV4 {
+  return sharedProvider(settings).languageModel(modelId);
+}
+
+/** Returns an embedding model for a registry embedding model. Shares instances with `ggmlNode`. */
+export function ggmlEmbedding(
+  modelId: ModelId,
+  settings: GgmlNodeProviderSettings = {},
+): EmbeddingModelV4 {
+  return sharedProvider(settings).embeddingModel(modelId);
+}
+
+function sharedProvider(settings: GgmlNodeProviderSettings): GgmlNodeProvider {
   const key = settingsKey(settings);
   let provider = sharedProviders.get(key);
   if (!provider) {
     provider = createGgmlNodeProvider(settings);
     sharedProviders.set(key, provider);
   }
-  return provider.languageModel(modelId);
+  return provider;
 }
 
 export function createGgmlNodeProvider(settings: GgmlNodeProviderSettings = {}): GgmlNodeProvider {
@@ -51,9 +65,12 @@ export function createGgmlNodeProvider(settings: GgmlNodeProviderSettings = {}):
 
   const languageModel = (modelId: ModelId): LanguageModelV4 =>
     languageModelFor(modelId, instanceFor(modelId));
+  const embeddingModel = (modelId: ModelId): EmbeddingModelV4 =>
+    embeddingModelFor(modelId, instanceFor(modelId));
 
   const provider = ((modelId: ModelId) => languageModel(modelId)) as GgmlNodeProvider;
   provider.languageModel = languageModel;
+  provider.embeddingModel = embeddingModel;
   return provider;
 }
 

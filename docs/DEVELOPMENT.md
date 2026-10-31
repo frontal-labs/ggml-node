@@ -44,9 +44,9 @@ Skip a hook with `git commit --no-verify` only for amending a message or rebasin
 - `src/` is the library. Import it with the `@/` alias (`@/core/ggml-node.js`). Relative imports into `src/` are not allowed.
 - `src/env.ts` is the only module that reads `process.env`.
 - `src/core/` holds the public handle, scheduler, prompt handling, schemas, memory preflight and structured output.
-- `src/backend/` holds the `node-llama-cpp` backend and the isolated (child-process) backend.
+- `src/backend/` holds the `node-llama-cpp` backend and the isolated (child-process) backend: `host.ts`, `worker.ts`, `protocol.ts` and `worker-main.ts`. `src/types.ts` holds the backend contract.
 - `src/registry/` holds the model manifest, cache resolution, the resumable downloader and `ensureModel`.
-- `src/ai/` is the AI SDK provider. `src/testing/` is the mock. `src/cli/` is the command line.
+- `src/ai/` is the AI SDK provider. `tests/mocks/` is the mock, built as `ggml-node/testing`. `src/cli/` is the command line.
 - `tests/unit/`, `tests/e2e/`, `tests/helpers/` and `tests/types/` hold the tests.
 - `examples/` are runnable workspace packages. `skills/` are agent skills. `docs/` is the documentation.
 

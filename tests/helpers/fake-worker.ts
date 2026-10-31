@@ -1,4 +1,4 @@
-import { runWorker } from "@/backend/isolated/worker.js";
+import { runWorker } from "@/backend/worker.js";
 import { createFakeBackend } from "./fake-backend.js";
 
 /**

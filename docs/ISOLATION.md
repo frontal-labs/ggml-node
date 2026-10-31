@@ -10,7 +10,7 @@ The API, the result shapes and the errors are the same. Only the place where inf
 
 ## How it works
 
-- The host forks `dist/backend/isolated/worker-main.js` on the first request, and keeps the child for later ones.
+- The host forks `dist/backend/worker-main.js` on the first request, and keeps the child for later ones.
 - Requests and replies go over IPC as typed JSON messages. The child streams deltas back as they are produced.
 - Abort signals are forwarded to the child, which stops generating.
 - Grammar output is decoded and checked in the child, so the native grammar never leaves it.

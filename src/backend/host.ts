@@ -1,17 +1,18 @@
 // biome-ignore-all lint/suspicious/useAwait: Backend methods return promises for one uniform interface
 import { type ChildProcess, fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type { HostMessage, WireError, WorkerMessage } from "@/backend/isolated/protocol.js";
+import type { HostMessage, WireError, WorkerMessage } from "@/backend/protocol.js";
+import { GgmlNodeError, type GgmlNodeErrorCode } from "@/core/errors.js";
+import type { JsonSchemaObject, Message } from "@/core/types.js";
 import type {
   Backend,
+  BackendEmbedResult,
   BackendLoadOptions,
   BackendLoadResult,
   BackendRequest,
   BackendResult,
   JsonGrammar,
-} from "@/backend/types.js";
-import { GgmlNodeError, type GgmlNodeErrorCode } from "@/core/errors.js";
-import type { JsonSchemaObject, Message } from "@/core/types.js";
+} from "@/types.js";
 
 /**
  * Process isolation. The native backend runs in a child process. If the child crashes, the requests
@@ -27,7 +28,7 @@ export interface IsolatedBackendOptions {
   execPath?: string;
   maxRestarts?: number;
   restartWindowMs?: number;
-  /** The worker entry to fork. Defaults to the built `backend/isolated/worker-main.js`. */
+  /** The worker entry to fork. Defaults to the built `backend/worker-main.js`. */
   workerPath?: string;
 }
 
@@ -51,7 +52,7 @@ function installExitHook(): void {
 }
 
 const defaultWorkerPath = (): string =>
-  fileURLToPath(new URL("./backend/isolated/worker-main.js", import.meta.url));
+  fileURLToPath(new URL("./backend/worker-main.js", import.meta.url));
 
 interface Pending {
   onDelta: ((text: string) => void) | undefined;
@@ -224,6 +225,13 @@ export function createIsolatedBackend(options: IsolatedBackendOptions = {}): Bac
     },
     countTokens(text: string): Promise<number> {
       return request<number>((id) => ({ id, text, type: "count" }));
+    },
+    embed(inputs: string[], signal?: AbortSignal): Promise<BackendEmbedResult> {
+      return request<BackendEmbedResult>(
+        (id) => ({ id, inputs, type: "embed" }),
+        undefined,
+        signal,
+      );
     },
     generate(
       sequence: number,

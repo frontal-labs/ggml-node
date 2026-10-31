@@ -9,6 +9,7 @@ Creates a handle. No model loads until the first call, or until `ready()`. Inval
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `model` | `ModelId \| { path: string }` | required | A registry id, or a path to a GGUF file on disk. |
+| `kind` | `"generation"` or `"embedding"` | from the model | Read from the GGUF metadata. Set it when the metadata is missing or wrong. See [models](./MODELS.md#embedding-models). |
 | `contextSize` | positive integer | `min(model context, 4096)` | Tokens for prompt plus output. |
 | `maxConcurrency` | integer ≥ 1 | `1` | Requests running at once. Each one holds a backend sequence. |
 | `maxQueue` | integer ≥ 0 | `64` | Requests waiting beyond the running ones. Overflow throws `QUEUE_FULL`. |
@@ -22,6 +23,8 @@ Creates a handle. No model loads until the first call, or until `ready()`. Inval
 | `onEvent` | `(event) => void` | none | Local event hook. Nothing is sent anywhere. Errors thrown by the hook are ignored. |
 
 ## `GgmlNode`
+
+A handle holds one model, and that model has one kind. `generate`, `stream` and `object` need a `generation` model. `embed` needs an `embedding` model. Calling the wrong one rejects with `INVALID_OPTIONS` before any work runs. `ready`, `countTokens`, `info` and `unload` work for both kinds.
 
 ### `ready(): Promise<ModelInfo>`
 
@@ -39,13 +42,41 @@ Returns `{ textStream, result, abort() }`. `textStream` yields text deltas. `res
 
 Generates JSON constrained to a schema and returns the parsed value. `options.schema` is a Zod 4 schema, or a plain JSON Schema object. A Zod schema gives `T` directly. A JSON Schema object gives `unknown` unless you pass a type argument: `ai.object<{ name: string }>({ schema, prompt })`. The result also has `raw`, the text as generated.
 
+### `embed(options): Promise<EmbedResult>`
+
+Returns one embedding vector per input, in input order. Requires an `embedding` model.
+
+```ts
+const { embeddings, dimensions } = await node.embed({ input: ["a cat on a mat", "a kitten on a rug"] });
+const [first] = (await node.embed({ input: "one text" })).embeddings;
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `input` | string or string[] | A string is a batch of one. Strings must not be empty, and the list must not be empty. |
+| `signal` | `AbortSignal` | Aborting while queued rejects with `ABORTED`. A batch already running finishes its current input, then stops. |
+
+Each input is embedded on its own. The result has the same shape for one input or many:
+
+```ts
+interface EmbedResult {
+  dimensions: number;       // length of every vector
+  embeddings: number[][];   // one per input, in input order
+  model: ModelId | "custom";
+  usage: { inputTokens: number; totalTokens: number }; // special tokens included
+  timing: { queueMs: number; loadMs: number; totalMs: number };
+}
+```
+
+Vectors are not normalized. Compare them with cosine similarity. Input is never truncated: an input longer than `contextSize` rejects with `CONTEXT_OVERFLOW`, so split long text first.
+
 ### `countTokens(text): Promise<number>`
 
-Token count for a plain string, using the model's tokenizer.
+Token count for a plain string, using the model's tokenizer. Works for both kinds.
 
 ### `info(): ModelInfo | null`
 
-The loaded model's info, or `null` before the first load and after `unload()`.
+The loaded model's info, or `null` before the first load and after `unload()`. `kind` is always set. `dimensions` is set only for an `embedding` model.
 
 ### `unload(): Promise<void>`
 
@@ -95,7 +126,7 @@ interface GenerateResult {
 
 ## Events
 
-`onEvent` receives these, in order for a request: `load:start`, `load:done`, `request:queued` (only when it waits), `request:start`, then `request:done` or `request:error`. Downloads emit `download:start`, `download:progress` and `download:done`.
+`onEvent` receives these, in order for a request: `load:start`, `load:done`, `request:queued` (only when it waits), `request:start`, then `request:done` or `request:error`. An `embed()` call that succeeds ends with `embed:done` instead of `request:done`. Its payload has the summary (`dimensions`, `model`, `usage`, `timing`) and never the vectors. Downloads emit `download:start`, `download:progress` and `download:done`.
 
 ## Errors
 
@@ -109,14 +140,14 @@ Every error from the public API is an `GgmlNodeError` with a `code`, a non-empty
 | `LICENSE_NOT_ACCEPTED` | The model's license needs `acceptLicense: true`. |
 | `UNSUPPORTED_PLATFORM` | The native backend could not start on this machine. Run `doctor`. |
 | `OUT_OF_MEMORY` | The preflight estimate exceeds available memory. The hint suggests a smaller model or a lower `contextSize`. |
-| `CONTEXT_OVERFLOW` | The prompt does not fit, and the overflow policy does not fix it. |
+| `CONTEXT_OVERFLOW` | The prompt does not fit, and the overflow policy does not fix it. For `embed()`, one input has at least `contextSize` tokens. |
 | `QUEUE_FULL` | More requests are waiting than `maxQueue` allows. |
 | `ABORTED` | The signal fired. |
 | `SCHEMA_VIOLATION` | The output did not match the schema. Raise `maxTokens` if it was cut short. |
-| `INVALID_OPTIONS` | An option is out of range, or a schema uses an unsupported keyword. The message names the field. |
+| `INVALID_OPTIONS` | An option is out of range, a schema uses an unsupported keyword, or a method does not match the model's kind (for example `generate()` on an embedding model). The message names the field or the mismatch. |
 | `BACKEND_CRASHED` | The backend failed. With `isolation: "process"`, the next call restarts it. |
 
 ## Exports
 
 - Values: `createGgmlNode`, `GgmlNodeError`, `isGgmlNodeError`, `GGML_NODE_ERROR_CODES`.
-- Types: `GgmlNode`, `GgmlNodeOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `ModelInfo`, `GgmlNodeEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `GgmlNodeErrorCode`.
+- Types: `GgmlNode`, `GgmlNodeOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `EmbedOptions`, `EmbedResult`, `EmbedUsage`, `EmbedTiming`, `ModelInfo`, `ModelKind`, `GgmlNodeEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `GgmlNodeErrorCode`.

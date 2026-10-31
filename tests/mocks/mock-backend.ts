@@ -1,16 +1,18 @@
 // biome-ignore-all lint/suspicious/useAwait: Backend methods return promises for one uniform interface
 // biome-ignore-all lint/performance/noAwaitInLoops: the mock streams chunks one at a time, in order
 // biome-ignore-all lint/complexity/noExcessiveCognitiveComplexity: the mock mirrors the real generate loop
+
+import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
 import type {
   Backend,
+  BackendEmbedResult,
   BackendLoadOptions,
   BackendLoadResult,
   BackendRequest,
   BackendResult,
   JsonGrammar,
   ParsedOutput,
-} from "@/backend/types.js";
-import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
+} from "@/types.js";
 
 /** What a mock reply can be: a fixed string, a list played in order, or a function of the request. */
 export type MockResponder =
@@ -21,6 +23,8 @@ export type MockResponder =
 export interface MockBackendOptions {
   /** Delay before each emitted chunk, in ms. Lets tests abort mid-stream. */
   delayMs?: number;
+  /** Length of each embedding vector when the model is loaded as `embedding`. Default 8. */
+  dimensions?: number;
   respond?: MockResponder;
   /** Words emitted per streamed chunk. Default 1. */
   tokensPerChunk?: number;
@@ -28,6 +32,17 @@ export interface MockBackendOptions {
 
 const WHITESPACE = /\s+/u;
 const words = (text: string): string[] => text.split(WHITESPACE).filter(Boolean);
+const DEFAULT_DIMENSIONS = 8;
+
+/** A fixed unit vector per text: the same text always gives the same vector, and different texts differ. */
+function vectorFor(text: string, dimensions: number): number[] {
+  const vector = Array.from({ length: dimensions }, () => 0);
+  for (const [i, char] of [...text].entries()) {
+    vector[i % dimensions] = (vector[i % dimensions] ?? 0) + char.charCodeAt(0);
+  }
+  const norm = Math.hypot(...vector) || 1;
+  return vector.map((value) => value / norm);
+}
 
 /**
  * A deterministic backend with no native code. Token counts are whitespace-separated words.
@@ -35,10 +50,12 @@ const words = (text: string): string[] => text.split(WHITESPACE).filter(Boolean)
  */
 export function createMockBackend(options: MockBackendOptions = {}): Backend {
   let loaded = false;
+  let loadedKind: BackendLoadOptions["kind"] = "generation";
   let listCursor = 0;
   const { respond = (r: { messages: readonly Message[] }) => `echo: ${lastUser(r.messages)}` } =
     options;
   const chunkSize = Math.max(1, options.tokensPerChunk ?? 1);
+  const dimensions = options.dimensions ?? DEFAULT_DIMENSIONS;
 
   function nextReply(messages: readonly Message[]): string {
     if (typeof respond === "string") {
@@ -61,6 +78,15 @@ export function createMockBackend(options: MockBackendOptions = {}): Backend {
     },
     async countTokens(text: string): Promise<number> {
       return words(text).length;
+    },
+    async embed(inputs: string[]): Promise<BackendEmbedResult> {
+      if (!loaded || loadedKind !== "embedding") {
+        throw new Error("mock backend embed() needs an embedding model loaded");
+      }
+      return {
+        inputTokens: inputs.reduce((n, text) => n + words(text).length, 0),
+        vectors: inputs.map((text) => vectorFor(text, dimensions)),
+      };
     },
     async generate(
       _sequence: number,
@@ -115,8 +141,10 @@ export function createMockBackend(options: MockBackendOptions = {}): Backend {
     },
     async load(load: BackendLoadOptions): Promise<BackendLoadResult> {
       loaded = true;
+      loadedKind = load.kind;
       return {
         contextSize: load.contextSize,
+        dimensions: load.kind === "embedding" ? dimensions : undefined,
         gpu: false,
         path: load.path,
         sizeBytes: 0,

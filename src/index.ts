@@ -3,6 +3,10 @@ export type { GgmlNodeErrorCode, GgmlNodeErrorOptions } from "@/core/errors.js";
 export { GGML_NODE_ERROR_CODES, GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
 export { createGgmlNode } from "@/core/ggml-node.js";
 export type {
+  EmbedOptions,
+  EmbedResult,
+  EmbedTiming,
+  EmbedUsage,
   FinishReason,
   GenerateOptions,
   GenerateResult,
@@ -13,6 +17,7 @@ export type {
   Message,
   ModelId,
   ModelInfo,
+  ModelKind,
   ModelSource,
   ObjectOptions,
   ObjectResult,

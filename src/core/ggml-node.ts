@@ -2,9 +2,8 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
-import { createIsolatedBackend } from "@/backend/isolated/host.js";
+import { createIsolatedBackend } from "@/backend/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
-import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
 import { GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
 import { emitEvent } from "@/core/events.js";
@@ -16,7 +15,7 @@ import {
 } from "@/core/memory.js";
 import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
 import { abortedError, Scheduler } from "@/core/scheduler.js";
-import { firstIssue, ggmlNodeOptionsSchema } from "@/core/schemas.js";
+import { embedOptionsSchema, firstIssue, ggmlNodeOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
@@ -25,12 +24,15 @@ import {
   zodToJsonSchema,
 } from "@/core/structured.js";
 import type {
+  EmbedOptions,
+  EmbedResult,
   GenerateOptions,
   GenerateResult,
   GgmlNode,
   GgmlNodeOptions,
   JsonSchemaObject,
   ModelInfo,
+  ModelKind,
   ObjectOptions,
   ObjectResult,
   StreamResult,
@@ -40,6 +42,13 @@ import { env as defaultEnv, type GgmlNodeEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
+import type {
+  Backend,
+  BackendEmbedResult,
+  BackendRequest,
+  BackendResult,
+  ParsedOutput,
+} from "@/types.js";
 
 const DEFAULT_CONTEXT_CAP = 4096;
 
@@ -156,6 +165,7 @@ export function createGgmlNodeWithDeps(
     }
 
     const meta = await deps.readMeta(path);
+    const kind: ModelKind = options.kind ?? meta.kind;
     const contextSize =
       options.contextSize ??
       Math.min(Math.min(contextCap, meta.trainContextSize), DEFAULT_CONTEXT_CAP);
@@ -165,26 +175,31 @@ export function createGgmlNodeWithDeps(
       });
     }
 
+    // An embedding context evaluates one input at a time, so it needs the KV cache of one sequence.
+    const sequences = kind === "embedding" ? 1 : maxConcurrency;
     await preflight({
       contextSize,
-      estimateBytes: estimateModelBytes(meta.sizeBytes, meta.shape, contextSize, maxConcurrency),
+      estimateBytes: estimateModelBytes(meta.sizeBytes, meta.shape, contextSize, sequences),
       readers: deps.memory,
-      sequences: maxConcurrency,
+      sequences,
     });
 
     try {
       const backendInfo = await backend.load({
         contextSize,
-        path,
-        sequences: maxConcurrency,
-        ...(threads === undefined ? {} : { threads }),
         gpu,
+        kind,
+        path,
+        sequences,
+        ...(threads === undefined ? {} : { threads }),
       });
       const info: ModelInfo = {
         backend: "llama-cpp",
         contextSize: backendInfo.contextSize,
+        ...(backendInfo.dimensions === undefined ? {} : { dimensions: backendInfo.dimensions }),
         gpu: backendInfo.gpu,
         id: modelLabel,
+        kind,
         license,
         path,
         sizeBytes: backendInfo.sizeBytes,
@@ -228,6 +243,7 @@ export function createGgmlNodeWithDeps(
     const started = performance.now();
     const { state, loadMs } = await ensureLoaded();
     const { backend, scheduler, info } = state;
+    requireKind(info, "generation");
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
       throw new GgmlNodeError(
@@ -299,6 +315,49 @@ export function createGgmlNodeWithDeps(
         throw abortedError();
       }
       emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
+      return result;
+    } catch (err) {
+      emitEvent(onEvent, { error: toGgmlNodeError(err), id: requestId, type: "request:error" });
+      throw err;
+    }
+  }
+
+  async function embed(opts: EmbedOptions): Promise<EmbedResult> {
+    const requestId = nextId();
+    try {
+      const inputs = embedInputs(opts.input);
+      const started = performance.now();
+      const { state, loadMs } = await ensureLoaded();
+      const { backend, scheduler, info } = state;
+      requireKind(info, "embedding");
+      if (info.dimensions === undefined) {
+        throw new GgmlNodeError("BACKEND_CRASHED", "The embedding model did not report its size", {
+          hint: "Run: npx ggml-node doctor. If this persists, report it with the stack trace.",
+        });
+      }
+
+      const lease = await scheduler.acquire(opts.signal, (queueLength) =>
+        emitEvent(onEvent, { id: requestId, queueLength, type: "request:queued" }),
+      );
+      emitEvent(onEvent, { id: requestId, type: "request:start" });
+      let outcome: BackendEmbedResult;
+      try {
+        outcome = await backend.embed(inputs, opts.signal);
+      } catch (err) {
+        throw toGgmlNodeError(err);
+      } finally {
+        lease.release();
+      }
+
+      const result: EmbedResult = {
+        dimensions: info.dimensions,
+        embeddings: outcome.vectors,
+        model: info.id,
+        timing: { loadMs, queueMs: lease.queueMs, totalMs: performance.now() - started },
+        usage: { inputTokens: outcome.inputTokens, totalTokens: outcome.inputTokens },
+      };
+      const { embeddings: _embeddings, ...summary } = result;
+      emitEvent(onEvent, { id: requestId, result: summary, type: "embed:done" });
       return result;
     } catch (err) {
       emitEvent(onEvent, { error: toGgmlNodeError(err), id: requestId, type: "request:error" });
@@ -408,6 +467,7 @@ export function createGgmlNodeWithDeps(
       const { state } = await ensureLoaded();
       return state.backend.countTokens(text);
     },
+    embed,
     generate,
     info(): ModelInfo | null {
       return loaded?.info ?? null;
@@ -477,6 +537,36 @@ function checkStructured(
     throw schemaViolation(checked.error.message);
   }
   return checked.data;
+}
+
+/** Checks the embed input and returns it as a batch. A single string is a batch of one. */
+function embedInputs(input: EmbedOptions["input"]): string[] {
+  const parsed = embedOptionsSchema.safeParse({ input });
+  if (!parsed.success) {
+    const issue = firstIssue(parsed.error);
+    throw new GgmlNodeError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+      hint: "Pass a non-empty string, or a non-empty array of non-empty strings.",
+    });
+  }
+  return typeof parsed.data.input === "string" ? [parsed.data.input] : parsed.data.input;
+}
+
+/** A generation call on an embedding model, or the reverse, fails before any work runs. */
+function requireKind(info: ModelInfo, needed: ModelKind): void {
+  if (info.kind === needed) {
+    return;
+  }
+  const describe = (kind: ModelKind) => (kind === "embedding" ? "an embedding" : "a generation");
+  const isEmbed = needed === "embedding";
+  throw new GgmlNodeError(
+    "INVALID_OPTIONS",
+    `This call needs ${describe(needed)} model, but the model is ${describe(info.kind)} model`,
+    {
+      hint: isEmbed
+        ? "Use generate() for a generation model. Load an embedding model with its GGUF path."
+        : "Use embed() for an embedding model, or load a generation model.",
+    },
+  );
 }
 
 /** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */

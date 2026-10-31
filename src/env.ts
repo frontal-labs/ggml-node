@@ -12,6 +12,8 @@ export const envSchema = {
   GGML_NODE_CACHE_DIR: z.string().min(1).optional(),
   /** Test-only switch. Enables the real-model suites under `tests/e2e`. */
   GGML_NODE_E2E: z.string().optional(),
+  /** Test-only. A path to an embedding GGUF file for the embedding suite under `tests/e2e`. */
+  GGML_NODE_EMBED_MODEL: z.string().min(1).optional(),
   GGML_NODE_OFFLINE: z.string().optional(),
   LOCALAPPDATA: z.string().min(1).optional(),
   XDG_CACHE_HOME: z.string().min(1).optional(),

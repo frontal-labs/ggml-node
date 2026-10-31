@@ -1,23 +1,25 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { languageModelFor } from "@/ai/model.js";
 import { createGgmlNodeWithDeps } from "@/core/ggml-node.js";
-import type { GgmlNode } from "@/core/types.js";
-import { createMockBackend, type MockBackendOptions } from "@/testing/mock-backend.js";
+import type { GgmlNode, ModelKind } from "@/core/types.js";
+import { createMockBackend, type MockBackendOptions } from "./mock-backend.js";
 
 /**
  * `ggml-node/testing`: an GgmlNode that answers without a model. It loads no native code, needs no
  * file, and returns the same shapes as the real thing. Use it in unit tests of code that calls GgmlNode.
  */
 
-export type { MockBackendOptions, MockResponder } from "@/testing/mock-backend.js";
+export type { MockBackendOptions, MockResponder } from "./mock-backend.js";
 
 export interface MockGgmlNodeOptions extends MockBackendOptions {
+  /** `embedding` makes `embed()` work, and `generation` makes `generate()` work. Default "generation". */
+  kind?: ModelKind;
   /** The model id reported in results. Default "custom". */
   model?: string;
 }
 
 export function createMockGgmlNode(options: MockGgmlNodeOptions = {}): GgmlNode {
-  const { model: _model, ...backend } = options;
+  const { model: _model, kind = "generation", ...backend } = options;
   return createGgmlNodeWithDeps(
     { model: { path: "mock://ggml-node" } },
     {
@@ -29,6 +31,7 @@ export function createMockGgmlNode(options: MockGgmlNodeOptions = {}): GgmlNode 
       },
       pathExists: async () => true,
       readMeta: async () => ({
+        kind,
         shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
         sizeBytes: 0,
         trainContextSize: 4096,

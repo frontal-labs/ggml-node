@@ -1,5 +1,7 @@
 // biome-ignore-all lint/suspicious/useAwait: doStream stays async so errors become rejections, as the SDK expects
 import type {
+  EmbeddingModelV4,
+  EmbeddingModelV4Result,
   LanguageModelV4,
   LanguageModelV4CallOptions,
   LanguageModelV4FinishReason,
@@ -12,6 +14,50 @@ import type {
 } from "@ai-sdk/provider";
 import { GgmlNodeError } from "@/core/errors.js";
 import type { GenerateResult, GgmlNode, Message } from "@/core/types.js";
+
+/** The `EmbeddingModelV4` implementation for an embedding model. */
+export function embeddingModelFor(modelId: string, llm: GgmlNode): EmbeddingModelV4 {
+  return new GgmlNodeEmbeddingModel(modelId, llm);
+}
+
+class GgmlNodeEmbeddingModel implements EmbeddingModelV4 {
+  readonly specificationVersion = "v4" as const;
+  readonly provider = "ggml-node";
+  readonly modelId: string;
+  // The scheduler queues calls for the model, so there is no fixed batch limit to split against.
+  readonly maxEmbeddingsPerCall = undefined;
+  readonly supportsParallelCalls = false;
+  private readonly llm: GgmlNode;
+
+  constructor(modelId: string, llm: GgmlNode) {
+    this.modelId = modelId;
+    this.llm = llm;
+  }
+
+  async doEmbed(options: {
+    values: string[];
+    dimensions?: number;
+    abortSignal?: AbortSignal;
+  }): Promise<EmbeddingModelV4Result> {
+    const warnings =
+      options.dimensions === undefined
+        ? []
+        : [
+            unsupported(
+              "dimensions",
+              "The model's output size is fixed, so the requested dimensions were ignored.",
+            ),
+          ];
+    if (options.values.length === 0) {
+      return { embeddings: [], usage: { tokens: 0 }, warnings };
+    }
+    const result = await this.llm.embed({
+      input: options.values,
+      ...(options.abortSignal ? { signal: options.abortSignal } : {}),
+    });
+    return { embeddings: result.embeddings, usage: { tokens: result.usage.inputTokens }, warnings };
+  }
+}
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.

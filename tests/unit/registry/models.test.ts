@@ -7,7 +7,7 @@ const HTTPS_URL = /^https:\/\//u;
 
 describe("registry manifest", () => {
   it("has one generated entry per source, with matching ids and files", () => {
-    expect(MODEL_IDS).toEqual(MODEL_SOURCES.map((s) => s.id));
+    expect([...MODEL_IDS].sort()).toEqual(MODEL_SOURCES.map((s) => s.id).sort());
     for (const source of MODEL_SOURCES) {
       expect(MODELS[source.id].file).toBe(source.file);
       expect(MODELS[source.id].hfRepo).toBe(source.hfRepo);

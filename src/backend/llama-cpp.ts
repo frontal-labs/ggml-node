@@ -2,17 +2,19 @@
 // biome-ignore-all lint/style/useErrorCause: GgmlNodeError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import type { ChatHistoryItem } from "node-llama-cpp";
+import { GgmlNodeError } from "@/core/errors.js";
+import { abortedError } from "@/core/scheduler.js";
+import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
 import type {
   Backend,
+  BackendEmbedResult,
   BackendLoadOptions,
   BackendLoadResult,
   BackendRequest,
   BackendResult,
   JsonGrammar,
   ParsedOutput,
-} from "@/backend/types.js";
-import { GgmlNodeError } from "@/core/errors.js";
-import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
+} from "@/types.js";
 
 /**
  * `node-llama-cpp` backend. The package is imported on first use, so importing `ggml-node` alone
@@ -20,6 +22,9 @@ import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
  *
  * The chat template comes from the GGUF metadata (`chatWrapper: "auto"`). It is never hand-written.
  * Each request builds a stateless chat over a pooled sequence, and the sequence is cleared first.
+ *
+ * An `embedding` model loads an embedding context instead. It has no sequences and no chat template.
+ * `embed()` runs one input at a time, because the embedding context serializes its own evaluations.
  */
 
 type NodeLlama = typeof import("node-llama-cpp");
@@ -29,6 +34,7 @@ type LlamaContext = Awaited<ReturnType<LlamaModel["createContext"]>>;
 type LlamaContextSequence = ReturnType<LlamaContext["getSequence"]>;
 type ChatWrapper = InstanceType<NodeLlama["ChatWrapper"]>;
 type NativeGrammar = Awaited<ReturnType<Llama["createGrammarForJsonSchema"]>>;
+type LlamaEmbeddingContext = Awaited<ReturnType<LlamaModel["createEmbeddingContext"]>>;
 
 interface Loaded {
   context: LlamaContext;
@@ -39,20 +45,49 @@ interface Loaded {
   wrapper: ChatWrapper;
 }
 
+interface LoadedEmbedding {
+  context: LlamaEmbeddingContext;
+  /** The requested context size. The embedding context does not expose its own. */
+  contextSize: number;
+  llama: Llama;
+  model: LlamaModel;
+}
+
 const MAX_CACHED_GRAMMARS = 16;
 
 export function createLlamaCppBackend(): Backend {
   let loaded: Loaded | undefined;
+  let loadedEmbedding: LoadedEmbedding | undefined;
   /** Native grammars by key. Cleared on unload, because each one belongs to the loaded llama. */
   const nativeGrammars = new Map<string, NativeGrammar>();
 
+  function notLoaded(): GgmlNodeError {
+    return new GgmlNodeError("INVALID_OPTIONS", "The backend is not loaded", {
+      hint: "Call ready() first.",
+    });
+  }
+
   function state(): Loaded {
     if (!loaded) {
-      throw new GgmlNodeError("INVALID_OPTIONS", "The backend is not loaded", {
-        hint: "Call ready() first.",
-      });
+      throw notLoaded();
     }
     return loaded;
+  }
+
+  function embeddingState(): LoadedEmbedding {
+    if (!loadedEmbedding) {
+      throw notLoaded();
+    }
+    return loadedEmbedding;
+  }
+
+  /** Any loaded model has a tokenizer, so token counts work for both kinds. */
+  function modelOrThrow(): LlamaModel {
+    const model = loaded?.model ?? loadedEmbedding?.model;
+    if (!model) {
+      throw notLoaded();
+    }
+    return model;
   }
 
   function sequence(index: number): LlamaContextSequence {
@@ -118,7 +153,33 @@ export function createLlamaCppBackend(): Backend {
     countPromptTokens: countPrompt,
 
     async countTokens(text: string): Promise<number> {
-      return state().model.tokenize(text).length;
+      return modelOrThrow().tokenize(text).length;
+    },
+
+    async embed(inputs: string[], signal?: AbortSignal): Promise<BackendEmbedResult> {
+      const current = embeddingState();
+      const vectors: number[][] = [];
+      let inputTokens = 0;
+      for (const input of inputs) {
+        if (signal?.aborted) {
+          throw abortedError();
+        }
+        // The embedding context adds the same special tokens as this count, and rejects inputs at the limit.
+        const length = current.context.calculateInputLength(input);
+        if (length >= current.contextSize) {
+          throw new GgmlNodeError(
+            "CONTEXT_OVERFLOW",
+            `An input has ${length} tokens, and the context holds ${current.contextSize}`,
+            { hint: "Split the text into shorter inputs, or raise contextSize." },
+          );
+        }
+        inputTokens += length;
+        // One input at a time: the embedding context evaluates serially, so a batch gains nothing from Promise.all.
+        // biome-ignore lint/performance/noAwaitInLoops: the native embedding context serializes evaluations
+        const embedding = await current.context.getEmbeddingFor(input);
+        vectors.push(Array.from(embedding.vector));
+      }
+      return { inputTokens, vectors };
     },
 
     async generate(
@@ -187,6 +248,9 @@ export function createLlamaCppBackend(): Backend {
       }
 
       const model = await llama.loadModel({ modelPath: options.path });
+      if (options.kind === "embedding") {
+        return loadEmbedding(options, llama, model);
+      }
       const context = await model.createContext({
         contextSize: options.contextSize,
         sequences: options.sequences,
@@ -220,16 +284,49 @@ export function createLlamaCppBackend(): Backend {
 
     async unload(): Promise<void> {
       const current = loaded;
+      const embedding = loadedEmbedding;
       loaded = undefined;
+      loadedEmbedding = undefined;
       nativeGrammars.clear();
-      if (!current) {
-        return;
+      if (current) {
+        await current.context.dispose();
+        await current.model.dispose();
+        await current.llama.dispose();
       }
-      await current.context.dispose();
-      await current.model.dispose();
-      await current.llama.dispose();
+      if (embedding) {
+        await embedding.context.dispose();
+        await embedding.model.dispose();
+        await embedding.llama.dispose();
+      }
     },
   };
+
+  async function loadEmbedding(
+    options: BackendLoadOptions,
+    llama: Llama,
+    model: LlamaModel,
+  ): Promise<BackendLoadResult> {
+    try {
+      const context = await model.createEmbeddingContext({
+        contextSize: options.contextSize,
+        ...(options.threads === undefined ? {} : { threads: options.threads }),
+      });
+      loadedEmbedding = { context, contextSize: options.contextSize, llama, model };
+    } catch (err) {
+      await model.dispose();
+      await llama.dispose();
+      throw err;
+    }
+    const sizeBytes = (await stat(options.path)).size;
+    return {
+      contextSize: options.contextSize,
+      dimensions: model.embeddingVectorSize,
+      gpu: llama.gpu,
+      path: options.path,
+      sizeBytes,
+      trainContextSize: model.trainContextSize,
+    };
+  }
 }
 
 /** Decodes grammar output and checks it against the schema. Failures are reported, not thrown. */

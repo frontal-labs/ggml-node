@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+Add embedding models. `createGgmlNode` loads an embedding model as well as a generation model. A handle has one model, and its kind comes from the GGUF metadata (or the new `kind` option). `embed({ input })` returns one vector per input, in input order, with `dimensions`, `usage` and `timing`. Calling `embed()` on a generation model, or `generate()`, `stream()` or `object()` on an embedding model, rejects with `INVALID_OPTIONS`. `ModelInfo` gains `kind` and `dimensions`, and `onEvent` emits `embed:done`.
+
+The registry gains `bge-small-en-v1.5` (MIT, 384 dimensions). The AI SDK provider gains `ggmlEmbedding()`, an `EmbeddingModelV4` for `embed` and `embedMany`. The `ggml-node/testing` mock accepts `kind: "embedding"`.
+
 ## 0.1.0
 
 First release.

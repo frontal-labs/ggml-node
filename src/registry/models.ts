@@ -2,6 +2,22 @@
 // Run `bun run registry:generate` to refresh it.
 
 export const MODELS = {
+  "bge-small-en-v1.5": {
+    contextLength: 512,
+    displayName: "BGE Small English v1.5 (Q8_0)",
+    file: "bge-small-en-v1.5-q8_0.gguf",
+    hfRepo: "CompendiumLabs/bge-small-en-v1.5-gguf",
+    id: "bge-small-en-v1.5",
+    license: "MIT",
+    licenseUrl: "https://opensource.org/licenses/MIT",
+    notes:
+      "Embedding model: use embed(), not generate(). 384 dimensions, 512-token context. Q8_0 build of BAAI/bge-small-en-v1.5.",
+    // Heuristic: weights plus about 20% for the KV cache and runtime at the default context.
+    ramEstimateBytes: 44_168_333,
+    sha256: "ec38e8da142596baa913124ae50550de284b6916bf59577ef2f0cb9660c2f514",
+    sizeBytes: 36_806_944,
+    url: "https://huggingface.co/CompendiumLabs/bge-small-en-v1.5-gguf/resolve/main/bge-small-en-v1.5-q8_0.gguf",
+  },
   "qwen2.5-0.5b": {
     contextLength: 32_768,
     displayName: "Qwen2.5 0.5B Instruct (Q4_K_M)",

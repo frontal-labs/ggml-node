@@ -61,6 +61,43 @@ export interface StreamResult {
 }
 
 /**
+ * `generate`, `stream` and `object` need a `generation` model. `embed` needs an `embedding` model.
+ * A model's kind comes from its GGUF metadata, and `GgmlNodeOptions.kind` can override it.
+ */
+export type ModelKind = "generation" | "embedding";
+
+export interface EmbedOptions {
+  /** One text, or a batch. Each input is embedded on its own, and results keep the input order. */
+  input: string | string[];
+  /** Aborts while the request waits in the queue. A batch that is already running finishes its current input. */
+  signal?: AbortSignal;
+}
+
+export interface EmbedUsage {
+  /** Tokens evaluated for all inputs, including the special tokens the model adds. */
+  inputTokens: number;
+  totalTokens: number;
+}
+
+export interface EmbedTiming {
+  /** Time spent loading the model in this call, else 0. */
+  loadMs: number;
+  /** Time waiting for a free slot. */
+  queueMs: number;
+  totalMs: number;
+}
+
+export interface EmbedResult {
+  /** Length of every vector. Same as `ModelInfo.dimensions`. */
+  dimensions: number;
+  /** One vector per input, in input order. */
+  embeddings: number[][];
+  model: ModelId | "custom";
+  timing: EmbedTiming;
+  usage: EmbedUsage;
+}
+
+/**
  * A Zod 4 schema, matched structurally so the library does not import zod at
  * type level. `z.infer<S>` is `S["_zod"]["output"]`.
  */
@@ -84,8 +121,11 @@ export interface ObjectResult<T> extends Omit<GenerateResult, "text"> {
 export interface ModelInfo {
   backend: "llama-cpp";
   contextSize: number;
+  /** Length of each embedding vector. Set only for an `embedding` model. */
+  dimensions?: number;
   gpu: string | false;
   id: ModelId | "custom";
+  kind: ModelKind;
   license: string;
   path: string;
   sizeBytes: number;
@@ -100,6 +140,7 @@ export type GgmlNodeEvent =
   | { type: "request:queued"; id: string; queueLength: number }
   | { type: "request:start"; id: string }
   | { type: "request:done"; id: string; result: Omit<GenerateResult, "text"> }
+  | { type: "embed:done"; id: string; result: Omit<EmbedResult, "embeddings"> }
   | { type: "request:error"; id: string; error: GgmlNodeError };
 
 export type ModelSource = ModelId | { path: string };
@@ -117,6 +158,11 @@ export interface GgmlNodeOptions {
   gpu?: "auto" | false;
   /** Default "none". */
   isolation?: "none" | "process";
+  /**
+   * The model's kind. Default: read from the GGUF metadata (a model with a `pooling_type` is an
+   * embedding model). Set it when the metadata is missing or wrong.
+   */
+  kind?: ModelKind;
   /** Parallel sequences. Default 1. */
   maxConcurrency?: number;
   /** Pending requests beyond concurrency. Overflow throws QUEUE_FULL. Default 64. */
@@ -132,6 +178,9 @@ export interface GgmlNodeOptions {
 
 export interface GgmlNode {
   countTokens: (text: string) => Promise<number>;
+  /** Embedding vectors for one or more texts. Requires an `embedding` model. */
+  embed: (options: EmbedOptions) => Promise<EmbedResult>;
+  /** Requires a `generation` model. */
   generate: (options: GenerateOptions) => Promise<GenerateResult>;
   info: () => ModelInfo | null;
   /** Overloads: a Zod schema infers its output type. A JSON Schema object returns `unknown` unless `T` is given. */

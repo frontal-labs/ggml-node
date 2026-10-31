@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createIsolatedBackend } from "@/backend/isolated/host.js";
+import { createIsolatedBackend } from "@/backend/host.js";
 import { isGgmlNodeError } from "@/core/errors.js";
 import { createGgmlNodeWithDeps } from "@/core/ggml-node.js";
 import type { GgmlNode, GgmlNodeEvent, GgmlNodeOptions } from "@/core/types.js";
+
+import { FAKE_DIMENSIONS } from "../helpers/fake-backend.js";
 
 const WORKER = fileURLToPath(new URL("../helpers/fake-worker.ts", import.meta.url));
 
@@ -50,6 +52,7 @@ describe("process isolation", () => {
         },
         pathExists: async () => true,
         readMeta: async () => ({
+          kind: "generation",
           shape: { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 },
           sizeBytes: 100,
           trainContextSize: 4096,
@@ -66,6 +69,16 @@ describe("process isolation", () => {
     expect(r.text).toBe("echo: hello there");
     expect(r.finishReason).toBe("stop");
     expect(r.usage.outputTokens).toBe(3);
+    expect(r.model).toBe("custom");
+  }, 30_000);
+
+  it("embeds through the child process, with the same result shape", async () => {
+    const ai = isolated({}, { kind: "embedding" });
+    const r = await ai.embed({ input: ["hello there", "again"] });
+    expect(r.embeddings).toHaveLength(2);
+    expect(r.dimensions).toBe(FAKE_DIMENSIONS);
+    expect(r.embeddings[0]).toHaveLength(FAKE_DIMENSIONS);
+    expect(r.usage.inputTokens).toBe(3);
     expect(r.model).toBe("custom");
   }, 30_000);
 

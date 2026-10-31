@@ -1,14 +1,16 @@
 // biome-ignore-all lint/suspicious/useAwait: fake backend methods return promises for one uniform interface
 // biome-ignore-all lint/performance/noAwaitInLoops: the fake streams words one at a time, in order
 // biome-ignore-all lint/complexity/noExcessiveCognitiveComplexity: the fake mirrors the real generate loop
+
+import type { JsonSchemaObject, Message } from "@/core/types.js";
 import type {
   Backend,
+  BackendEmbedResult,
   BackendLoadOptions,
   BackendRequest,
   BackendResult,
   ParsedOutput,
-} from "@/backend/types.js";
-import type { JsonSchemaObject, Message } from "@/core/types.js";
+} from "@/types.js";
 
 export interface FakeBackendOptions {
   /** Delay before each streamed word, in ms. Lets tests abort mid-stream. */
@@ -22,8 +24,12 @@ export interface FakeBackendOptions {
   respond?: (messages: Message[]) => string;
 }
 
+export const FAKE_DIMENSIONS = 4;
+
 export interface FakeBackend extends Backend {
   active: number;
+  /** Number of inputs in each embed() call, in call order. */
+  embedBatches: number[];
   generations: number[];
   grammarBuilds: number;
   loads: number;
@@ -43,6 +49,15 @@ function fakeParse(text: string): ParsedOutput {
 const WHITESPACE = /\s+/u;
 const wordsOf = (text: string) => text.split(WHITESPACE).filter(Boolean);
 
+/** Vector length FAKE_DIMENSIONS, from character codes. Same text, same vector. */
+function fakeVector(text: string): number[] {
+  const vector = [0, 0, 0, 0];
+  for (const [i, char] of [...text].entries()) {
+    vector[i % FAKE_DIMENSIONS] = (vector[i % FAKE_DIMENSIONS] ?? 0) + char.charCodeAt(0);
+  }
+  return vector;
+}
+
 /** A deterministic backend. Counts tokens as whitespace-separated words. */
 export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend {
   const respond =
@@ -52,6 +67,7 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
       return `echo: ${last?.content ?? ""}`;
     });
 
+  let loadedKind: BackendLoadOptions["kind"] = "generation";
   const backend: FakeBackend = {
     active: 0,
     async buildJsonGrammar(schema: JsonSchemaObject) {
@@ -64,6 +80,17 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
     async countTokens(text: string) {
       return wordsOf(text).length;
     },
+    async embed(inputs: string[]): Promise<BackendEmbedResult> {
+      if (loadedKind !== "embedding") {
+        throw new Error("fake backend embed() needs an embedding model loaded");
+      }
+      backend.embedBatches.push(inputs.length);
+      return {
+        inputTokens: inputs.reduce((n, text) => n + wordsOf(text).length, 0),
+        vectors: inputs.map(fakeVector),
+      };
+    },
+    embedBatches: [],
     async generate(
       sequence: number,
       request: BackendRequest,
@@ -121,8 +148,10 @@ export function createFakeBackend(options: FakeBackendOptions = {}): FakeBackend
     grammarBuilds: 0,
     async load(load: BackendLoadOptions) {
       backend.loads += 1;
+      loadedKind = load.kind;
       return {
         contextSize: load.contextSize,
+        dimensions: load.kind === "embedding" ? FAKE_DIMENSIONS : undefined,
         gpu: false,
         path: load.path,
         sizeBytes: 1000,

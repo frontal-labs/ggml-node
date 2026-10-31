@@ -1,6 +1,13 @@
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
-import { createGgmlNode, type GenerateResult, type GgmlNode, type ObjectResult } from "@/index.js";
+import {
+  createGgmlNode,
+  type EmbedResult,
+  type GenerateResult,
+  type GgmlNode,
+  type ModelInfo,
+  type ObjectResult,
+} from "@/index.js";
 import type { ModelId } from "@/registry/models.js";
 
 /**
@@ -8,7 +15,9 @@ import type { ModelId } from "@/registry/models.js";
  * them. The function is exported but never called at runtime, so the M1 stubs never run.
  */
 export async function assertPublicTypes(): Promise<void> {
-  expectTypeOf<ModelId>().toEqualTypeOf<"qwen2.5-0.5b" | "qwen2.5-1.5b" | "smollm2-360m">();
+  expectTypeOf<ModelId>().toEqualTypeOf<
+    "qwen2.5-0.5b" | "qwen2.5-1.5b" | "smollm2-360m" | "bge-small-en-v1.5"
+  >();
 
   // @ts-expect-error not a registry model
   createGgmlNode({ model: "gpt-4o" });
@@ -20,6 +29,14 @@ export async function assertPublicTypes(): Promise<void> {
   const ai = null as unknown as GgmlNode;
   expectTypeOf(ai.generate).returns.resolves.toEqualTypeOf<GenerateResult>();
   expectTypeOf(ai.countTokens).returns.resolves.toEqualTypeOf<number>();
+  expectTypeOf(ai.embed).returns.resolves.toEqualTypeOf<EmbedResult>();
+  expectTypeOf(ai.ready).returns.resolves.toEqualTypeOf<ModelInfo>();
+  expectTypeOf<ModelInfo["kind"]>().toEqualTypeOf<"generation" | "embedding">();
+  expectTypeOf<EmbedResult["embeddings"]>().toEqualTypeOf<number[][]>();
+
+  createGgmlNode({ kind: "embedding", model: { path: "./models/custom.gguf" } });
+  // @ts-expect-error kind is one of the two model kinds
+  createGgmlNode({ kind: "chat", model: { path: "./models/custom.gguf" } });
   expectTypeOf(ai.unload).returns.resolves.toEqualTypeOf<void>();
 
   const schema = z.object({ label: z.enum(["spam", "ham"]), score: z.number() });
