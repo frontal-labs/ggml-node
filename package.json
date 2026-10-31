@@ -1,6 +1,6 @@
 {
   "name": "ggml-node",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "An LLM inside your Node process. No daemon, no API key, no port.",
   "keywords": [
     "llm",

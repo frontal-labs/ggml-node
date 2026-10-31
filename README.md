@@ -1,4 +1,4 @@
-# Node SLM
+# GGML Node
 
 ![Frontal Banner](./banner.jpg)
 
