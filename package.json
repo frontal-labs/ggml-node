@@ -1,5 +1,5 @@
 {
-  "name": "tiny-llm",
+  "name": "node-slm",
   "version": "0.1.0",
   "description": "An LLM inside your Node process. No daemon, no API key, no port.",
   "keywords": [
@@ -11,13 +11,13 @@
     "structured-output",
     "offline"
   ],
-  "homepage": "https://github.com/frontal-labs/tiny-llm#readme",
+  "homepage": "https://github.com/frontal-labs/node-slm#readme",
   "bugs": {
-    "url": "https://github.com/frontal-labs/tiny-llm/issues"
+    "url": "https://github.com/frontal-labs/node-slm/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/frontal-labs/tiny-llm.git"
+    "url": "git+https://github.com/frontal-labs/node-slm.git"
   },
   "license": "Apache-2.0",
   "author": "Frontal Labs",
@@ -38,7 +38,7 @@
     }
   },
   "bin": {
-    "tiny-llm": "./dist/cli/index.js"
+    "node-slm": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -59,7 +59,7 @@
     "release": "bun run verify && bun run release:publish",
     "release:publish": "changeset publish",
     "test": "vitest run tests/unit",
-    "test:e2e": "TINY_LLM_E2E=1 vitest run tests/e2e",
+    "test:e2e": "NODE_SLM_E2E=1 vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
     "ultracite:check": "bun run scripts/sync-ultracite.ts --check",
     "ultracite:sync": "bun run scripts/sync-ultracite.ts",

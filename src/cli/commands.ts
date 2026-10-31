@@ -2,16 +2,16 @@ import { readFile } from "node:fs/promises";
 import { arch, cpus, platform, release, totalmem } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { isTinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError } from "@/core/errors.js";
 import { nodeMemoryReaders, readAvailableSystemBytes } from "@/core/memory.js";
-import type { GenerateResult, ModelInfo, TinyLLM, TinyLLMOptions } from "@/core/types.js";
-import { env as defaultEnv, type TinyLLMEnv } from "@/env.js";
+import type { GenerateResult, ModelInfo, NodeSlm, NodeSlmOptions } from "@/core/types.js";
+import { env as defaultEnv, type NodeSlmEnv } from "@/env.js";
 import { resolveCacheDir } from "@/registry/cache.js";
 import { isModelPresent } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
 
 /** Commands that run inference. They take an injectable factory, so tests use the mock backend. */
-export type TinyLLMFactory = (options: TinyLLMOptions) => TinyLLM;
+export type NodeSlmFactory = (options: NodeSlmOptions) => NodeSlm;
 
 export interface BenchResult {
   firstTokenMs: number;
@@ -35,7 +35,7 @@ export interface DoctorCheck {
 const BYTES_PER_GB = 1024 ** 3;
 const gb = (bytes: number) => (bytes / BYTES_PER_GB).toFixed(1);
 
-/** `tiny-llm run`: one generation, or one structured object when a JSON Schema file is given. */
+/** `node-slm run`: one generation, or one structured object when a JSON Schema file is given. */
 export const runOptionsSchema = z.object({
   json: z.boolean().default(false),
   jsonSchema: z.string().min(1).optional(),
@@ -54,8 +54,8 @@ export interface RunOutput {
 export async function runPrompt(
   prompt: string,
   rawOptions: unknown,
-  factory: TinyLLMFactory,
-  env: TinyLLMEnv = defaultEnv,
+  factory: NodeSlmFactory,
+  env: NodeSlmEnv = defaultEnv,
 ): Promise<RunOutput> {
   const options = runOptionsSchema.parse(rawOptions);
   const model = options.model as ModelId;
@@ -88,12 +88,12 @@ export async function runPrompt(
   }
 }
 
-/** `tiny-llm bench`: load time, first token, tokens per second, and peak resident memory. */
+/** `node-slm bench`: load time, first token, tokens per second, and peak resident memory. */
 export async function benchModel(
   modelId: ModelId,
   tokens: number,
-  factory: TinyLLMFactory,
-  env: TinyLLMEnv = defaultEnv,
+  factory: NodeSlmFactory,
+  env: NodeSlmEnv = defaultEnv,
 ): Promise<BenchResult> {
   const ai = factory({ model: modelId, ...cacheOption(env) });
   let peak = process.memoryUsage().rss;
@@ -126,10 +126,10 @@ export async function benchModel(
   }
 }
 
-/** `tiny-llm doctor`: each check reports ok, warn or fail, and a failure says how to fix it. */
+/** `node-slm doctor`: each check reports ok, warn or fail, and a failure says how to fix it. */
 export async function doctor(
-  factory: TinyLLMFactory,
-  env: TinyLLMEnv = defaultEnv,
+  factory: NodeSlmFactory,
+  env: NodeSlmEnv = defaultEnv,
 ): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   checks.push({
@@ -161,7 +161,7 @@ export async function doctor(
     detail: cacheDir,
     fix: writable
       ? undefined
-      : "Make the directory writable, or set TINY_LLM_CACHE_DIR to a writable path.",
+      : "Make the directory writable, or set NODE_SLM_CACHE_DIR to a writable path.",
     name: "cache dir",
     status: writable ? "ok" : "fail",
   });
@@ -172,7 +172,7 @@ export async function doctor(
     detail: cached
       ? `${defaultEntry.displayName} is cached`
       : `${defaultEntry.displayName} is not cached`,
-    fix: cached ? undefined : "Run: npx tiny-llm pull qwen2.5-0.5b",
+    fix: cached ? undefined : "Run: npx node-slm pull qwen2.5-0.5b",
     name: "default model",
     status: cached ? "ok" : "warn",
   });
@@ -191,7 +191,7 @@ export async function doctor(
     } catch (err) {
       checks.push({
         detail: describe(err),
-        fix: isTinyLLMError(err) ? err.hint : "Run the command again with a fresh process.",
+        fix: isNodeSlmError(err) ? err.hint : "Run the command again with a fresh process.",
         name: "backend",
         status: "fail",
       });
@@ -204,7 +204,7 @@ export function doctorExitCode(checks: readonly DoctorCheck[]): number {
   return checks.some((c) => c.status === "fail") ? 2 : 0;
 }
 
-function cacheOption(env: TinyLLMEnv): { cacheDir?: string } {
+function cacheOption(env: NodeSlmEnv): { cacheDir?: string } {
   const dir = resolveCacheDir({ env });
   return { cacheDir: dir };
 }
@@ -223,7 +223,7 @@ async function canWrite(dir: string): Promise<boolean> {
 }
 
 function describe(err: unknown): string {
-  if (isTinyLLMError(err)) {
+  if (isNodeSlmError(err)) {
     return `${err.code}: ${err.message}`;
   }
   return err instanceof Error ? err.message : String(err);

@@ -72,4 +72,4 @@ The schema is added to the system prompt, so the model also knows what the field
 
 ## Measured reliability
 
-On the default model, 100 real calls (50 classification and 50 nested extraction) all parsed and validated (`tests/e2e/structured.e2e.test.ts`). Content quality is a separate question, and small models make mistakes in content. See [what tiny models are good at](./what-tiny-models-are-good-at.md).
+On the default model, 100 real calls (50 classification and 50 nested extraction) all parsed and validated (`tests/e2e/structured.e2e.test.ts`). Content quality is a separate question, and small models make mistakes in content.

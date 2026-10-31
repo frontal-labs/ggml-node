@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError } from "@/core/errors.js";
 import {
   availableMemoryBytes,
   estimateKvBytes,
@@ -52,8 +52,8 @@ describe("memory estimates", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("OUT_OF_MEMORY");
-    expect(isTinyLLMError(err) && err.hint).toContain("contextSize");
+    expect(isNodeSlmError(err) && err.code).toBe("OUT_OF_MEMORY");
+    expect(isNodeSlmError(err) && err.hint).toContain("contextSize");
   });
 
   it("passes when the estimate fits", async () => {

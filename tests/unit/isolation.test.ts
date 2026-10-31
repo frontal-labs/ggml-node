@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createIsolatedBackend } from "@/backend/isolated/host.js";
-import { isTinyLLMError } from "@/core/errors.js";
-import { createTinyLLMWithDeps } from "@/core/tiny-llm.js";
-import type { TinyLLM, TinyLLMEvent, TinyLLMOptions } from "@/core/types.js";
+import { isNodeSlmError } from "@/core/errors.js";
+import { createNodeSlmWithDeps } from "@/core/node-slm.js";
+import type { NodeSlm, NodeSlmEvent, NodeSlmOptions } from "@/core/types.js";
 
 const WORKER = fileURLToPath(new URL("../helpers/fake-worker.ts", import.meta.url));
 
@@ -16,10 +16,10 @@ const childOptions = { execArgv: ["--import", "tsx"], execPath: "node", workerPa
 
 describe("process isolation", () => {
   let dir: string;
-  const made: TinyLLM[] = [];
+  const made: NodeSlm[] = [];
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "tiny-llm-iso-"));
+    dir = await mkdtemp(join(tmpdir(), "node-slm-iso-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
   });
 
@@ -30,10 +30,10 @@ describe("process isolation", () => {
 
   function isolated(
     backendOptions: Parameters<typeof createIsolatedBackend>[0] = {},
-    options: Partial<TinyLLMOptions> = {},
-    events: TinyLLMEvent[] = [],
-  ): TinyLLM {
-    const ai = createTinyLLMWithDeps(
+    options: Partial<NodeSlmOptions> = {},
+    events: NodeSlmEvent[] = [],
+  ): NodeSlm {
+    const ai = createNodeSlmWithDeps(
       {
         isolation: "process",
         model: { path: join(dir, "m.gguf") },
@@ -42,7 +42,7 @@ describe("process isolation", () => {
       },
       {
         createIsolatedBackend: () => createIsolatedBackend({ ...childOptions, ...backendOptions }),
-        env: { TINY_LLM_CACHE_DIR: dir },
+        env: { NODE_SLM_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
           cgroupCurrentBytes: async () => undefined,
@@ -88,7 +88,7 @@ describe("process isolation", () => {
   }, 30_000);
 
   it("a crash mid-generation fails the request with BACKEND_CRASHED, and the next call respawns", async () => {
-    const events: TinyLLMEvent[] = [];
+    const events: NodeSlmEvent[] = [];
     const ai = isolated({}, {}, events);
     await ai.ready();
 
@@ -96,7 +96,7 @@ describe("process isolation", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(crashed) && crashed.code).toBe("BACKEND_CRASHED");
+    expect(isNodeSlmError(crashed) && crashed.code).toBe("BACKEND_CRASHED");
 
     const recovered = await ai.generate({ prompt: "back again" });
     expect(recovered.text).toBe("echo: back again");
@@ -113,8 +113,8 @@ describe("process isolation", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("BACKEND_CRASHED");
-    expect(isTinyLLMError(err) && err.hint).toContain("stays stopped");
+    expect(isNodeSlmError(err) && err.code).toBe("BACKEND_CRASHED");
+    expect(isNodeSlmError(err) && err.hint).toContain("stays stopped");
   }, 60_000);
 
   it("aborting a running request stops the child's generation", async () => {
@@ -126,7 +126,7 @@ describe("process isolation", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("ABORTED");
+    expect(isNodeSlmError(err) && err.code).toBe("ABORTED");
   }, 30_000);
 
   it("unload stops the child; the next call reloads it", async () => {

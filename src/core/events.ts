@@ -1,12 +1,12 @@
-import type { TinyLLMEvent } from "@/core/types.js";
+import type { NodeSlmEvent } from "@/core/types.js";
 
-export type TinyLLMEventListener = (event: TinyLLMEvent) => void;
+export type NodeSlmEventListener = (event: NodeSlmEvent) => void;
 
 /**
  * Delivers an event to the user's `onEvent` hook. Events are local only: nothing is sent anywhere.
  * A listener that throws is isolated, so a logging hook cannot break inference.
  */
-export function emitEvent(listener: TinyLLMEventListener | undefined, event: TinyLLMEvent): void {
+export function emitEvent(listener: NodeSlmEventListener | undefined, event: NodeSlmEvent): void {
   if (!listener) {
     return;
   }

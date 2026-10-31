@@ -5,8 +5,8 @@ These numbers are measured. Each one says how it was taken, so you can judge how
 ## How to measure
 
 ```sh
-npx tiny-llm bench qwen2.5-0.5b --tokens 128          # table
-npx tiny-llm bench qwen2.5-0.5b --tokens 128 --json   # for scripts
+npx node-slm bench qwen2.5-0.5b --tokens 128          # table
+npx node-slm bench qwen2.5-0.5b --tokens 128 --json   # for scripts
 ```
 
 The benchmark loads the model, generates `--tokens` tokens from a fixed prompt at `temperature: 0`, and reports:
@@ -33,7 +33,7 @@ A shorter test on this machine, earlier and under less pressure, measured 8.4 to
 ## Not yet measured
 
 - A quiet-machine run on Apple silicon. Repeat it with nothing else open, and record the same fields.
-- A 4-vCPU x64 Linux machine, CPU only. The plan asks for it. Run `npx tiny-llm bench` there, and add the result.
+- A 4-vCPU x64 Linux machine, CPU only. The plan asks for it. Run `npx node-slm bench` there, and add the result.
 - Models other than the default. `qwen2.5-1.5b` and `smollm2-360m` are in the registry, and neither has been benchmarked here.
 
 When you add a row, record the machine, the OS, the Node version, the backend, the model, `--tokens`, and whether anything else was competing for memory.

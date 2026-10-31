@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/useErrorCause: TinyLLMError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: NodeSlmError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
@@ -6,7 +6,7 @@ import { createIsolatedBackend } from "@/backend/isolated/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
-import { isTinyLLMError, TinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError, NodeSlmError } from "@/core/errors.js";
 import { emitEvent } from "@/core/events.js";
 import {
   estimateModelBytes,
@@ -16,7 +16,7 @@ import {
 } from "@/core/memory.js";
 import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
 import { abortedError, Scheduler } from "@/core/scheduler.js";
-import { firstIssue, tinyLLMOptionsSchema } from "@/core/schemas.js";
+import { firstIssue, nodeSlmOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
@@ -29,14 +29,14 @@ import type {
   GenerateResult,
   JsonSchemaObject,
   ModelInfo,
+  NodeSlm,
+  NodeSlmOptions,
   ObjectOptions,
   ObjectResult,
   StreamResult,
-  TinyLLM,
-  TinyLLMOptions,
   ZodLikeSchema,
 } from "@/core/types.js";
-import { env as defaultEnv, type TinyLLMEnv } from "@/env.js";
+import { env as defaultEnv, type NodeSlmEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
@@ -44,19 +44,19 @@ import { MODELS, type ModelId } from "@/registry/models.js";
 const DEFAULT_CONTEXT_CAP = 4096;
 
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
-export interface TinyLLMDeps {
+export interface NodeSlmDeps {
   createBackend: () => Backend;
   /** Backend for `isolation: "process"`: the native backend in a child process. */
   createIsolatedBackend: () => Backend;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
-  env: TinyLLMEnv;
+  env: NodeSlmEnv;
   memory: MemoryReaders;
-  /** Whether a custom model path exists. Injected so tests and `tiny-llm/testing` need no file. */
+  /** Whether a custom model path exists. Injected so tests and `node-slm/testing` need no file. */
   pathExists: (path: string) => Promise<boolean>;
   readMeta: (path: string) => Promise<ModelMeta>;
 }
 
-export const defaultDeps: TinyLLMDeps = {
+export const defaultDeps: NodeSlmDeps = {
   createBackend: createLlamaCppBackend,
   createIsolatedBackend: () => createIsolatedBackend(),
   env: defaultEnv,
@@ -95,15 +95,15 @@ interface RunOutcome {
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
-export function createTinyLLM(options: TinyLLMOptions): TinyLLM {
-  return createTinyLLMWithDeps(options, defaultDeps);
+export function createNodeSlm(options: NodeSlmOptions): NodeSlm {
+  return createNodeSlmWithDeps(options, defaultDeps);
 }
 
-export function createTinyLLMWithDeps(
-  options: TinyLLMOptions,
-  overrides: Partial<TinyLLMDeps> = {},
-): TinyLLM {
-  const deps: TinyLLMDeps = { ...defaultDeps, ...overrides };
+export function createNodeSlmWithDeps(
+  options: NodeSlmOptions,
+  overrides: Partial<NodeSlmDeps> = {},
+): NodeSlm {
+  const deps: NodeSlmDeps = { ...defaultDeps, ...overrides };
   validateOptions(options);
 
   const id: ModelId | "custom" = typeof options.model === "string" ? options.model : "custom";
@@ -149,7 +149,7 @@ export function createTinyLLMWithDeps(
       license = "unknown";
       contextCap = Number.POSITIVE_INFINITY;
       if (!(await deps.pathExists(path))) {
-        throw new TinyLLMError("MODEL_NOT_FOUND", `No file at ${path}`, {
+        throw new NodeSlmError("MODEL_NOT_FOUND", `No file at ${path}`, {
           hint: "Check the path. Custom models must be GGUF files on disk.",
         });
       }
@@ -160,7 +160,7 @@ export function createTinyLLMWithDeps(
       options.contextSize ??
       Math.min(Math.min(contextCap, meta.trainContextSize), DEFAULT_CONTEXT_CAP);
     if (!Number.isInteger(contextSize) || contextSize < 1) {
-      throw new TinyLLMError("INVALID_OPTIONS", "contextSize must be a positive integer", {
+      throw new NodeSlmError("INVALID_OPTIONS", "contextSize must be a positive integer", {
         hint: "Set contextSize to a whole number, or leave it unset.",
       });
     }
@@ -194,7 +194,7 @@ export function createTinyLLMWithDeps(
       return { backend, info, scheduler: new Scheduler({ maxQueue, sequences: maxConcurrency }) };
     } catch (err) {
       await backend.unload().catch(() => undefined);
-      throw toTinyLLMError(err);
+      throw toNodeSlmError(err);
     }
   }
 
@@ -230,7 +230,7 @@ export function createTinyLLMWithDeps(
     const { backend, scheduler, info } = state;
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
-      throw new TinyLLMError(
+      throw new NodeSlmError(
         "INVALID_OPTIONS",
         `maxTokens (${req.maxTokens}) must be less than contextSize (${info.contextSize})`,
         { hint: "Lower maxTokens or raise contextSize." },
@@ -267,7 +267,7 @@ export function createTinyLLMWithDeps(
       };
       outcome = await backend.generate(lease.index, request, (text) => onDelta?.(text));
     } catch (err) {
-      throw toTinyLLMError(err);
+      throw toNodeSlmError(err);
     } finally {
       lease.release();
     }
@@ -301,7 +301,7 @@ export function createTinyLLMWithDeps(
       emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       return result;
     } catch (err) {
-      emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -331,7 +331,7 @@ export function createTinyLLMWithDeps(
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
     } catch (err) {
-      emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -367,13 +367,13 @@ export function createTinyLLMWithDeps(
         return finished;
       },
       (err: unknown) => {
-        if (isTinyLLMError(err) && err.code === "ABORTED" && controller.signal.aborted) {
+        if (isNodeSlmError(err) && err.code === "ABORTED" && controller.signal.aborted) {
           // Aborted while queued: nothing was generated. Resolve, as the contract says.
           chunks.close();
           return emptyAbortResult();
         }
         chunks.fail(err);
-        emitEvent(onEvent, { error: toTinyLLMError(err), id: requestId, type: "request:error" });
+        emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
         throw err;
       },
     );
@@ -412,7 +412,7 @@ export function createTinyLLMWithDeps(
     info(): ModelInfo | null {
       return loaded?.info ?? null;
     },
-    object: object as TinyLLM["object"],
+    object: object as NodeSlm["object"],
     async ready(): Promise<ModelInfo> {
       const { state } = await ensureLoaded();
       return state.info;
@@ -440,14 +440,14 @@ export function createTinyLLMWithDeps(
   };
 }
 
-function validateOptions(options: TinyLLMOptions): void {
-  const parsed = tinyLLMOptionsSchema.safeParse(options);
+function validateOptions(options: NodeSlmOptions): void {
+  const parsed = nodeSlmOptionsSchema.safeParse(options);
   if (parsed.success) {
     return;
   }
   const issue = firstIssue(parsed.error);
-  throw new TinyLLMError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
-    hint: "Check createTinyLLM options against docs/api.md.",
+  throw new NodeSlmError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+    hint: "Check createNodeSlm options against docs/API.md.",
   });
 }
 
@@ -482,7 +482,7 @@ function checkStructured(
 /** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */
 function asJsonSchemaObject(schema: unknown): JsonSchemaObject {
   if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
-    throw new TinyLLMError(
+    throw new NodeSlmError(
       "INVALID_OPTIONS",
       "schema must be a Zod schema or a JSON Schema object",
       {
@@ -498,16 +498,16 @@ function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {
   return rest;
 }
 
-function toTinyLLMError(err: unknown): TinyLLMError {
-  if (isTinyLLMError(err)) {
+function toNodeSlmError(err: unknown): NodeSlmError {
+  if (isNodeSlmError(err)) {
     return err;
   }
-  return new TinyLLMError(
+  return new NodeSlmError(
     "BACKEND_CRASHED",
     err instanceof Error ? err.message : "Unknown backend error",
     {
       cause: err,
-      hint: "Run: npx tiny-llm doctor. If this persists, report it with the stack trace.",
+      hint: "Run: npx node-slm doctor. If this persists, report it with the stack trace.",
     },
   );
 }

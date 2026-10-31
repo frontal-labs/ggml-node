@@ -1,5 +1,5 @@
 {
-  "appId": "com.example.tiny-llm",
+  "appId": "com.example.node-slm",
   "asar": true,
   "asarUnpack": [
     "**/node_modules/node-llama-cpp/**",

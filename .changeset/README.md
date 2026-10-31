@@ -1,6 +1,6 @@
 # Changesets
 
-Every change that a user of `tiny-llm` would notice gets a changeset.
+Every change that a user of `node-slm` would notice gets a changeset.
 
 ```sh
 bun run changeset        # pick patch, minor or major, and write a one-line summary
@@ -11,4 +11,4 @@ collects the pending changesets into a "Version Packages" pull request. Merging 
 bumps the version, updates `CHANGELOG.md`, and publishes to npm with provenance.
 
 Use `patch` for fixes, `minor` for new options or features, and `major` for breaking changes to
-the public API described in `docs/api.md`.
+the public API described in `docs/API.md`.

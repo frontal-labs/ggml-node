@@ -1,5 +1,5 @@
 {
-  "name": "@tiny-llm/example-express-server",
+  "name": "@node-slm/example-express-server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
-    "tiny-llm": "file:../..",
+    "node-slm": "file:../..",
     "zod": "^4.6.7"
   },
   "devDependencies": {

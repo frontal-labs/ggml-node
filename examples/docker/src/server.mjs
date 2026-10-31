@@ -1,8 +1,8 @@
-// A minimal HTTP server for the container. It needs the model cached in TINY_LLM_CACHE_DIR.
+// A minimal HTTP server for the container. It needs the model cached in NODE_SLM_CACHE_DIR.
 import { createServer } from "node:http";
-import { createTinyLLM } from "tiny-llm";
+import { createNodeSlm } from "node-slm";
 
-const ai = createTinyLLM({ model: "qwen2.5-0.5b" });
+const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
 
 createServer(async (req, res) => {
   if (req.method !== "POST" || req.url !== "/generate") {

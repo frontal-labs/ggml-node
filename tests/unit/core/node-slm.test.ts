@@ -2,9 +2,9 @@ import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isTinyLLMError } from "@/core/errors.js";
-import { createTinyLLMWithDeps, type TinyLLMDeps } from "@/core/tiny-llm.js";
-import type { TinyLLM, TinyLLMEvent, TinyLLMOptions } from "@/core/types.js";
+import { isNodeSlmError } from "@/core/errors.js";
+import { createNodeSlmWithDeps, type NodeSlmDeps } from "@/core/node-slm.js";
+import type { NodeSlm, NodeSlmEvent, NodeSlmOptions } from "@/core/types.js";
 import { MODELS } from "@/registry/models.js";
 import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-backend.js";
 
@@ -13,17 +13,17 @@ const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };
 function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   return p.then(
     () => undefined,
-    (e: unknown) => (isTinyLLMError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
+    (e: unknown) => (isNodeSlmError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
   );
 }
 
-describe("createTinyLLM", () => {
+describe("createNodeSlm", () => {
   let dir: string;
   let modelPath: string;
-  let events: TinyLLMEvent[];
+  let events: NodeSlmEvent[];
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "tiny-llm-core-"));
+    dir = await mkdtemp(join(tmpdir(), "node-slm-core-"));
     modelPath = join(dir, "custom.gguf");
     await writeFile(modelPath, Buffer.alloc(1000));
     events = [];
@@ -34,14 +34,14 @@ describe("createTinyLLM", () => {
   });
 
   function make(
-    options: Partial<TinyLLMOptions> & Pick<TinyLLMOptions, "model">,
+    options: Partial<NodeSlmOptions> & Pick<NodeSlmOptions, "model">,
     backendOptions: FakeBackendOptions = {},
-    depsOverride: Partial<TinyLLMDeps> = {},
+    depsOverride: Partial<NodeSlmDeps> = {},
   ) {
     const backend = createFakeBackend(backendOptions);
-    const deps: Partial<TinyLLMDeps> = {
+    const deps: Partial<NodeSlmDeps> = {
       createBackend: () => backend,
-      env: { TINY_LLM_CACHE_DIR: dir },
+      env: { NODE_SLM_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
         cgroupCurrentBytes: async () => undefined,
@@ -50,8 +50,8 @@ describe("createTinyLLM", () => {
       readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
       ...depsOverride,
     };
-    const ai: TinyLLM = createTinyLLMWithDeps(
-      { onEvent: (e) => events.push(e), ...options } as TinyLLMOptions,
+    const ai: NodeSlm = createNodeSlmWithDeps(
+      { onEvent: (e) => events.push(e), ...options } as NodeSlmOptions,
       deps,
     );
     return { ai, backend };
@@ -135,8 +135,8 @@ describe("createTinyLLM", () => {
         () => undefined,
         (e: unknown) => e,
       );
-      expect(isTinyLLMError(err) && err.code).toBe("BACKEND_CRASHED");
-      expect(isTinyLLMError(err) && err.hint.length > 0).toBe(true);
+      expect(isNodeSlmError(err) && err.code).toBe("BACKEND_CRASHED");
+      expect(isNodeSlmError(err) && err.hint.length > 0).toBe(true);
       expect(events.some((e) => e.type === "request:error")).toBe(true);
     });
 
@@ -171,7 +171,7 @@ describe("createTinyLLM", () => {
         })
         .catch((e: unknown) => e);
       // The last user message is never dropped, so this cannot fit and must fail.
-      expect(isTinyLLMError(r) && r.code).toBe("CONTEXT_OVERFLOW");
+      expect(isNodeSlmError(r) && r.code).toBe("CONTEXT_OVERFLOW");
     });
   });
 
@@ -276,7 +276,7 @@ describe("createTinyLLM", () => {
         make({ model: "gpt-4o" as never });
         expect.unreachable();
       } catch (err) {
-        expect(isTinyLLMError(err) && err.code).toBe("INVALID_OPTIONS");
+        expect(isNodeSlmError(err) && err.code).toBe("INVALID_OPTIONS");
       }
     });
 

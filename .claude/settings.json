@@ -38,11 +38,11 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Read(~/Library/Caches/tiny-llm/**)"
+      "Read(~/Library/Caches/node-slm/**)"
     ]
   },
   "env": {
-    "TINY_LLM_E2E": "0"
+    "NODE_SLM_E2E": "0"
   },
   "includeCoAuthoredBy": true
 }

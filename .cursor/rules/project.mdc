@@ -1,15 +1,15 @@
 ---
-description: What tiny-llm is and how this repo is organised
+description: What node-slm is and how this repo is organised
 alwaysApply: true
 ---
 
-# tiny-llm
+# node-slm
 
 An LLM inside the Node process. No daemon, no API key, no port.
 
-- Public entry points: `tiny-llm` (core), `tiny-llm/ai` (AI SDK provider), `tiny-llm/testing` (mocks).
-- Source lives in `src/`. Import it with the `@/` alias (`@/core/tiny-llm.js`), never with `../`.
-- Tests live in `tests/`: `tests/unit` (no network, no real model) and `tests/e2e` (opt-in with `TINY_LLM_E2E=1`).
+- Public entry points: `node-slm` (core), `node-slm/ai` (AI SDK provider), `node-slm/testing` (mocks).
+- Source lives in `src/`. Import it with the `@/` alias (`@/core/node-slm.js`), never with `../`.
+- Tests live in `tests/`: `tests/unit` (no network, no real model) and `tests/e2e` (opt-in with `NODE_SLM_E2E=1`).
 - Read `process.env` only through `src/env.ts`.
 - Runtime is Node 20+ for the published package. Development uses Bun (`bun run verify`).
 - `PLAN.md` is the source of the milestones. `DECISIONS.md` records every deviation from it.

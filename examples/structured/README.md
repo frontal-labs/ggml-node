@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@tiny-llm/example-structured' start
+bun --filter '@node-slm/example-structured' start
 ```
 
 ## Notes

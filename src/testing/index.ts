@@ -1,25 +1,25 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import { languageModelFor } from "@/ai/model.js";
-import { createTinyLLMWithDeps } from "@/core/tiny-llm.js";
-import type { TinyLLM } from "@/core/types.js";
+import { createNodeSlmWithDeps } from "@/core/node-slm.js";
+import type { NodeSlm } from "@/core/types.js";
 import { createMockBackend, type MockBackendOptions } from "@/testing/mock-backend.js";
 
 /**
- * `tiny-llm/testing`: an TinyLLM that answers without a model. It loads no native code, needs no
- * file, and returns the same shapes as the real thing. Use it in unit tests of code that calls TinyLLM.
+ * `node-slm/testing`: an NodeSlm that answers without a model. It loads no native code, needs no
+ * file, and returns the same shapes as the real thing. Use it in unit tests of code that calls NodeSlm.
  */
 
 export type { MockBackendOptions, MockResponder } from "@/testing/mock-backend.js";
 
-export interface MockTinyLLMOptions extends MockBackendOptions {
+export interface MockNodeSlmOptions extends MockBackendOptions {
   /** The model id reported in results. Default "custom". */
   model?: string;
 }
 
-export function createMockTinyLLM(options: MockTinyLLMOptions = {}): TinyLLM {
+export function createMockNodeSlm(options: MockNodeSlmOptions = {}): NodeSlm {
   const { model: _model, ...backend } = options;
-  return createTinyLLMWithDeps(
-    { model: { path: "mock://tiny-llm" } },
+  return createNodeSlmWithDeps(
+    { model: { path: "mock://node-slm" } },
     {
       createBackend: () => createMockBackend(backend),
       memory: {
@@ -37,7 +37,7 @@ export function createMockTinyLLM(options: MockTinyLLMOptions = {}): TinyLLM {
   );
 }
 
-/** An AI SDK language model that answers from a mock TinyLLM. Works with `generateText` and friends. */
+/** An AI SDK language model that answers from a mock NodeSlm. Works with `generateText` and friends. */
 export function mockModel(options: MockBackendOptions = {}): LanguageModelV4 {
-  return languageModelFor("mock", createMockTinyLLM(options));
+  return languageModelFor("mock", createMockNodeSlm(options));
 }

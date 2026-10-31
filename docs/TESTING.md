@@ -1,14 +1,14 @@
 # Testing
 
-## Your tests: `tiny-llm/testing`
+## Your tests: `node-slm/testing`
 
-Use it in unit tests of code that calls tiny-llm. It answers without a model, loads no native code, and returns the same shapes as the real thing.
+Use it in unit tests of code that calls node-slm. It answers without a model, loads no native code, and returns the same shapes as the real thing.
 
 ```ts
-import { createMockTinyLLM, mockModel } from "tiny-llm/testing";
+import { createMockNodeSlm, mockModel } from "node-slm/testing";
 import { generateText } from "ai";
 
-const ai = createMockTinyLLM({ respond: "a fixed answer" });
+const ai = createMockNodeSlm({ respond: "a fixed answer" });
 await ai.generate({ prompt: "anything" }); // { text: "a fixed answer", ... }
 
 await generateText({ model: mockModel({ respond: "hi" }), prompt: "x" }); // "hi"
@@ -31,17 +31,17 @@ The mock counts tokens as whitespace-separated words. Its numbers are for testin
 | Command | What it runs | Needs |
 | --- | --- | --- |
 | `bun run test` | `tests/unit`: 151 tests | nothing. No network, no real model. |
-| `bun run test:e2e` | `tests/e2e`: 9 real-model tests (generation, structured output, process isolation) | `TINY_LLM_E2E=1`, the default model cached, and `bun run build` for the isolation suite |
+| `bun run test:e2e` | `tests/e2e`: 9 real-model tests (generation, structured output, process isolation) | `NODE_SLM_E2E=1`, the default model cached, and `bun run build` for the isolation suite |
 | `bun run verify` | lint, typecheck, unit tests, build | nothing |
 
 Unit tests use `tests/helpers/fixture-server.ts` for HTTP (a local server with Range support) and `tests/helpers/fake-backend.ts` for inference. A compile-time check of the public API lives in `tests/types/public-api.ts`, and `bun run typecheck` enforces it.
 
 Process-isolation tests run the real worker protocol in a child process with a fake backend. A prompt containing `CRASH` kills the child, which exercises the crash path.
 
-A test asserts that `tiny-llm/testing` does not load `node-llama-cpp`. It runs the import in a child process with a loader hook that records native imports.
+A test asserts that `node-slm/testing` does not load `node-llama-cpp`. It runs the import in a child process with a loader hook that records native imports.
 
 ## Writing tests here
 
 - Compare large buffers with `Buffer.compare`, not `toEqual`. Vitest's deep equality is slow on them.
 - Do not assert on timing. Make the failure deterministic. The resume test uses a fetch that fails after 100 KB, not a socket trick.
-- Real-model tests go in `tests/e2e` and check `env.TINY_LLM_E2E`.
+- Real-model tests go in `tests/e2e` and check `env.NODE_SLM_E2E`.

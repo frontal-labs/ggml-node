@@ -1,12 +1,12 @@
-# Contributing to tiny-llm
+# Contributing to node-slm
 
-Thanks for your interest. tiny-llm is pre-release software; please keep changes small and reviewable.
+Thanks for your interest. node-slm is pre-release software; please keep changes small and reviewable.
 
 ## Development setup
 
 ```sh
-git clone git@github.com:frontal-labs/tiny-llm.git
-cd tiny-llm
+git clone git@github.com:frontal-labs/node-slm.git
+cd node-slm
 bun install
 bun run prepare   # installs git hooks (husky, lint-staged, commitlint)
 ```
@@ -20,7 +20,7 @@ Hooks run on every commit:
 
 ```sh
 bun run verify        # lint, typecheck, unit tests, build
-bun run test:e2e     # real-model tests (needs TINY_LLM_E2E=1 + cached model)
+bun run test:e2e     # real-model tests (needs NODE_SLM_E2E=1 + cached model)
 ```
 
 ## Commit messages
@@ -41,4 +41,4 @@ Releases are automated by `release.yml` from `main`. Add a changeset with `bun r
 
 ## Reporting issues
 
-Use the bug report template. Include your OS, Node version, tiny-llm version, the model you used, and the output of `tiny-llm doctor`.
+Use the bug report template. Include your OS, Node version, node-slm version, the model you used, and the output of `node-slm doctor`.

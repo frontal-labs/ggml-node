@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError } from "@/core/errors.js";
 import { Scheduler } from "@/core/scheduler.js";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -58,8 +58,8 @@ describe("Scheduler", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("QUEUE_FULL");
-    expect(isTinyLLMError(err) && err.hint.length > 0).toBe(true);
+    expect(isNodeSlmError(err) && err.code).toBe("QUEUE_FULL");
+    expect(isNodeSlmError(err) && err.hint.length > 0).toBe(true);
     held.release();
   });
 
@@ -75,7 +75,7 @@ describe("Scheduler", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("ABORTED");
+    expect(isNodeSlmError(err) && err.code).toBe("ABORTED");
     expect(s.queueLength).toBe(0);
 
     held.release();
@@ -92,7 +92,7 @@ describe("Scheduler", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(err) && err.code).toBe("ABORTED");
+    expect(isNodeSlmError(err) && err.code).toBe("ABORTED");
   });
 
   it("release is idempotent", async () => {

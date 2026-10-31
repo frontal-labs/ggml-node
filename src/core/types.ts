@@ -1,4 +1,4 @@
-import type { TinyLLMError } from "@/core/errors.js";
+import type { NodeSlmError } from "@/core/errors.js";
 
 import type { ModelId as RegistryModelId } from "@/registry/models.js";
 
@@ -91,7 +91,7 @@ export interface ModelInfo {
   sizeBytes: number;
 }
 
-export type TinyLLMEvent =
+export type NodeSlmEvent =
   | { type: "download:start"; model: ModelId; totalBytes: number }
   | { type: "download:progress"; model: ModelId; receivedBytes: number; totalBytes: number }
   | { type: "download:done"; model: ModelId; path: string }
@@ -100,16 +100,16 @@ export type TinyLLMEvent =
   | { type: "request:queued"; id: string; queueLength: number }
   | { type: "request:start"; id: string }
   | { type: "request:done"; id: string; result: Omit<GenerateResult, "text"> }
-  | { type: "request:error"; id: string; error: TinyLLMError };
+  | { type: "request:error"; id: string; error: NodeSlmError };
 
 export type ModelSource = ModelId | { path: string };
 
-export interface TinyLLMOptions {
+export interface NodeSlmOptions {
   /** Required for models whose license is not Apache-2.0 or MIT. Default false. */
   acceptLicense?: boolean;
   /** Download lazily when the model is missing and not offline. Default true. */
   autoDownload?: boolean;
-  /** Default: env TINY_LLM_CACHE_DIR, else the OS cache dir + /tiny-llm. */
+  /** Default: env NODE_SLM_CACHE_DIR, else the OS cache dir + /node-slm. */
   cacheDir?: string;
   /** Default: min(model.contextLength, 4096). */
   contextSize?: number;
@@ -123,14 +123,14 @@ export interface TinyLLMOptions {
   maxQueue?: number;
   /** A registry model id, or `{ path }` for a custom GGUF file. */
   model: ModelSource;
-  /** Or env TINY_LLM_OFFLINE=1. Default false. */
+  /** Or env NODE_SLM_OFFLINE=1. Default false. */
   offline?: boolean;
-  onEvent?: (event: TinyLLMEvent) => void;
+  onEvent?: (event: NodeSlmEvent) => void;
   /** Number of threads, or "auto". */
   threads?: number | "auto";
 }
 
-export interface TinyLLM {
+export interface NodeSlm {
   countTokens: (text: string) => Promise<number>;
   generate: (options: GenerateOptions) => Promise<GenerateResult>;
   info: () => ModelInfo | null;

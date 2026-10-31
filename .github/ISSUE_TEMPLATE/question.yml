@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about tiny-llm
+about: Ask a question about node-slm
 labels: question
 ---
 ## Question
@@ -11,4 +11,4 @@ labels: question
 <!-- Why are you asking? What are you trying to build? -->
 ## What you've checked
 
-<!-- Docs, issues, previous answers, `tiny-llm doctor`, etc. -->
+<!-- Docs, issues, previous answers, `node-slm doctor`, etc. -->

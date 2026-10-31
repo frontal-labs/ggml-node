@@ -1,4 +1,4 @@
-export const TINY_LLM_ERROR_CODES = [
+export const NODE_SLM_ERROR_CODES = [
   "MODEL_NOT_FOUND",
   "DOWNLOAD_FAILED",
   "CHECKSUM_MISMATCH",
@@ -13,21 +13,21 @@ export const TINY_LLM_ERROR_CODES = [
   "BACKEND_CRASHED",
 ] as const;
 
-export type TinyLLMErrorCode = (typeof TINY_LLM_ERROR_CODES)[number];
+export type NodeSlmErrorCode = (typeof NODE_SLM_ERROR_CODES)[number];
 
-export interface TinyLLMErrorOptions {
+export interface NodeSlmErrorOptions {
   cause?: unknown;
-  /** Actionable next step, e.g. "Run: npx tiny-llm pull qwen2.5-0.5b". Must be non-empty. */
+  /** Actionable next step, e.g. "Run: npx node-slm pull qwen2.5-0.5b". Must be non-empty. */
   hint: string;
 }
 
-export class TinyLLMError extends Error {
-  override readonly name = "TinyLLMError";
-  readonly code: TinyLLMErrorCode;
+export class NodeSlmError extends Error {
+  override readonly name = "NodeSlmError";
+  readonly code: NodeSlmErrorCode;
   readonly hint: string;
   override readonly cause: unknown;
 
-  constructor(code: TinyLLMErrorCode, message: string, options: TinyLLMErrorOptions) {
+  constructor(code: NodeSlmErrorCode, message: string, options: NodeSlmErrorOptions) {
     super(message);
     this.code = code;
     this.hint = options.hint;
@@ -35,6 +35,6 @@ export class TinyLLMError extends Error {
   }
 }
 
-export function isTinyLLMError(e: unknown): e is TinyLLMError {
-  return e instanceof TinyLLMError;
+export function isNodeSlmError(e: unknown): e is NodeSlmError {
+  return e instanceof NodeSlmError;
 }

@@ -1,9 +1,9 @@
 ---
-name: tiny-llm-structured-output
-description: Get a typed object from a local tiny-llm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
+name: node-slm-structured-output
+description: Get a typed object from a local node-slm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
 ---
 
-# tiny-llm-structured-output
+# node-slm-structured-output
 
 `object()` generates JSON under a grammar, so the shape is guaranteed. The values still come from the model, so validate what matters.
 
@@ -41,4 +41,4 @@ Rejected: `minimum`, `maximum`, `multipleOf`, `pattern`, `anyOf` (use `oneOf`), 
 
 With Zod, `object` returns Zod's `safeParse` output, so transforms and defaults apply. A failure throws `SCHEMA_VIOLATION`. Catch it, retry once with a larger `maxTokens`, and then surface the error.
 
-See `docs/structured-output.md` for the full subset.
+See `docs/STRUCTURED_OUTPUT.md` for the full subset.

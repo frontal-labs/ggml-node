@@ -1,4 +1,4 @@
-import { TinyLLMError } from "@/core/errors.js";
+import { NodeSlmError } from "@/core/errors.js";
 import { firstIssue, generateOptionsSchema } from "@/core/schemas.js";
 import type { GenerateOptions, Message } from "@/core/types.js";
 
@@ -146,8 +146,8 @@ function findLastIndex<T>(items: readonly T[], predicate: (item: T) => boolean):
   return -1;
 }
 
-function overflow(tokens: number, budget: number): TinyLLMError {
-  return new TinyLLMError(
+function overflow(tokens: number, budget: number): NodeSlmError {
+  return new NodeSlmError(
     "CONTEXT_OVERFLOW",
     `Prompt is ${tokens} tokens, but only ${budget} fit in the context`,
     {
@@ -156,6 +156,6 @@ function overflow(tokens: number, budget: number): TinyLLMError {
   );
 }
 
-function invalid(message: string, hint: string): TinyLLMError {
-  return new TinyLLMError("INVALID_OPTIONS", message, { hint });
+function invalid(message: string, hint: string): NodeSlmError {
+  return new NodeSlmError("INVALID_OPTIONS", message, { hint });
 }

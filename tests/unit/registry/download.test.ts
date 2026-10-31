@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isTinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError } from "@/core/errors.js";
 import { downloadFile, verifyFile } from "@/registry/download.js";
 import {
   type FixtureOptions,
@@ -19,7 +19,7 @@ describe("downloadFile", () => {
   let body: Buffer;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "tiny-llm-dl-"));
+    dir = await mkdtemp(join(tmpdir(), "node-slm-dl-"));
     body = randomBytes(256 * 1024);
   });
 
@@ -70,8 +70,8 @@ describe("downloadFile", () => {
       (e: unknown) => e,
     );
 
-    expect(isTinyLLMError(err)).toBe(true);
-    if (!isTinyLLMError(err)) {
+    expect(isNodeSlmError(err)).toBe(true);
+    if (!isNodeSlmError(err)) {
       throw new Error("unreachable");
     }
     expect(err.code).toBe("CHECKSUM_MISMATCH");
@@ -126,7 +126,7 @@ describe("downloadFile", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isTinyLLMError(first) && first.code).toBe("DOWNLOAD_FAILED");
+    expect(isNodeSlmError(first) && first.code).toBe("DOWNLOAD_FAILED");
     const kept = (await stat(`${dest}.partial`)).size;
     expect(kept).toBeGreaterThan(0);
     expect(kept).toBeLessThan(body.length);
@@ -219,7 +219,7 @@ describe("downloadFile", () => {
       (e: unknown) => e,
     );
 
-    expect(isTinyLLMError(err) && err.code).toBe("ABORTED");
+    expect(isNodeSlmError(err) && err.code).toBe("ABORTED");
     expect((await stat(`${dest}.partial`)).size).toBeGreaterThan(0);
   });
 
@@ -239,17 +239,17 @@ describe("downloadFile", () => {
       (e: unknown) => e,
     );
 
-    expect(isTinyLLMError(err) && err.code).toBe("DOWNLOAD_FAILED");
-    expect(isTinyLLMError(err) && err.hint.length > 0).toBe(true);
+    expect(isNodeSlmError(err) && err.code).toBe("DOWNLOAD_FAILED");
+    expect(isNodeSlmError(err) && err.hint.length > 0).toBe(true);
   });
 });
 
 describe("verifyFile", () => {
   it("returns true only when the content hash matches", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "tiny-llm-verify-"));
+    const dir = await mkdtemp(join(tmpdir(), "node-slm-verify-"));
     try {
       const path = join(dir, "f.bin");
-      const data = Buffer.from("hello tiny-llm");
+      const data = Buffer.from("hello node-slm");
       await writeFile(path, data);
       expect(await verifyFile(path, sha(data))).toBe(true);
       expect(await verifyFile(path, sha(Buffer.from("other")))).toBe(false);

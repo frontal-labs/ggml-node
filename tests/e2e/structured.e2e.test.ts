@@ -2,13 +2,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { env } from "@/env.js";
-import { createTinyLLM } from "@/index.js";
+import { createNodeSlm } from "@/index.js";
 
 /**
  * M4 acceptance: 50 classification runs and 50 nested-extraction runs with the default model.
- * Every run must parse and validate. Opt-in: TINY_LLM_E2E=1.
+ * Every run must parse and validate. Opt-in: NODE_SLM_E2E=1.
  */
-const enabled = env.TINY_LLM_E2E === "1";
+const enabled = env.NODE_SLM_E2E === "1";
 
 const classification = z.object({
   confidence: z.enum(["low", "medium", "high"]),
@@ -36,7 +36,7 @@ const bios = Array.from(
 );
 
 describe.skipIf(!enabled)("e2e: structured output, 50 + 50 runs", () => {
-  const ai = createTinyLLM({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
+  const ai = createNodeSlm({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
 
   it("classification: all 50 runs parse and validate", async () => {
     let valid = 0;

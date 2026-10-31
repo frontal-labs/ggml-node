@@ -2,25 +2,25 @@
 #
 # Build from the repository root, after packing the SDK:
 #   bun run build && bun pm pack
-#   docker build -f examples/docker/Dockerfile -t tiny-llm-example .
+#   docker build -f examples/docker/Dockerfile -t node-slm-example .
 #
 # The model is pulled in its own layer, so code changes do not download it again.
 
 FROM node:22-slim AS model
 WORKDIR /models
-COPY tiny-llm-*.tgz /tmp/tiny-llm/
-RUN cd /tmp/tiny-llm && npm install --omit=dev --prefix /opt/tiny-llm ./tiny-llm-*.tgz \
- && /opt/tiny-llm/node_modules/.bin/tiny-llm pull qwen2.5-0.5b --dir /models
+COPY node-slm-*.tgz /tmp/node-slm/
+RUN cd /tmp/node-slm && npm install --omit=dev --prefix /opt/node-slm ./node-slm-*.tgz \
+ && /opt/node-slm/node_modules/.bin/node-slm pull qwen2.5-0.5b --dir /models
 
 FROM node:22-slim AS app
 WORKDIR /app
-COPY tiny-llm-*.tgz /tmp/tiny-llm/
-RUN cd /tmp/tiny-llm && npm install --omit=dev --prefix /app ./tiny-llm-*.tgz \
- && rm -rf /tmp/tiny-llm
+COPY node-slm-*.tgz /tmp/node-slm/
+RUN cd /tmp/node-slm && npm install --omit=dev --prefix /app ./node-slm-*.tgz \
+ && rm -rf /tmp/node-slm
 COPY examples/docker/src/server.mjs ./src/
 COPY --from=model /models /models
-ENV TINY_LLM_CACHE_DIR=/models \
-    TINY_LLM_OFFLINE=1 \
+ENV NODE_SLM_CACHE_DIR=/models \
+    NODE_SLM_OFFLINE=1 \
     NODE_ENV=production
 EXPOSE 3000
 USER node

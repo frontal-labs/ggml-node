@@ -3,7 +3,7 @@
 By default the native backend runs inside your process. A crash in the native code takes the process down. `isolation: "process"` runs the backend in a child process instead.
 
 ```ts
-const ai = createTinyLLM({ model: "qwen2.5-0.5b", isolation: "process" });
+const ai = createNodeSlm({ model: "qwen2.5-0.5b", isolation: "process" });
 ```
 
 The API, the result shapes and the errors are the same. Only the place where inference runs changes.
@@ -35,4 +35,4 @@ The child exits when its parent disconnects, so no model is left loaded in the b
 
 ## Diagnosing a crash
 
-The child's stderr is inherited, so native errors appear in your terminal. `npx tiny-llm doctor` runs the backend in-process and shows whether the native binary loads at all.
+The child's stderr is inherited, so native errors appear in your terminal. `npx node-slm doctor` runs the backend in-process and shows whether the native binary loads at all.

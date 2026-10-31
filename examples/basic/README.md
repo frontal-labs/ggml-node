@@ -8,11 +8,11 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@tiny-llm/example-basic' start
+bun --filter '@node-slm/example-basic' start
 ```
 
 ## Notes
 
-- `createTinyLLM` requires a `model`. This example uses `qwen2.5-0.5b`, which `npx tiny-llm pull qwen2.5-0.5b` downloads on first use.
+- `createNodeSlm` requires a `model`. This example uses `qwen2.5-0.5b`, which `npx node-slm pull qwen2.5-0.5b` downloads on first use.
 - `stream` returns an async iterator over text deltas; `await s.result` gives the final result.
 - `unload` frees the model; `ai.info()` returns `null` afterwards.

@@ -1,5 +1,5 @@
 {
-  "name": "@tiny-llm/example-basic",
+  "name": "@node-slm/example-basic",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "tiny-llm": "file:../.."
+    "node-slm": "file:../.."
   }
 }

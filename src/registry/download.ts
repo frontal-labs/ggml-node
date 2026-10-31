@@ -1,9 +1,9 @@
-// biome-ignore-all lint/style/useErrorCause: TinyLLMError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: NodeSlmError takes its cause inside the options object (see src/core/errors.ts)
 import { createHash, type Hash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { TinyLLMError } from "@/core/errors.js";
+import { NodeSlmError } from "@/core/errors.js";
 
 export interface DownloadOptions {
   /** Final path. The download is written to `${destPath}.partial` first. */
@@ -102,7 +102,7 @@ async function fetchAndVerify(options: DownloadOptions): Promise<void> {
   }
 
   if (offset !== sizeBytes) {
-    throw new TinyLLMError(
+    throw new NodeSlmError(
       "DOWNLOAD_FAILED",
       `Download incomplete: ${offset} of ${sizeBytes} bytes`,
       {
@@ -113,7 +113,7 @@ async function fetchAndVerify(options: DownloadOptions): Promise<void> {
 
   if (hash.digest("hex") !== sha256) {
     await rm(partial, { force: true });
-    throw new TinyLLMError("CHECKSUM_MISMATCH", `SHA-256 mismatch for ${destPath}`, {
+    throw new NodeSlmError("CHECKSUM_MISMATCH", `SHA-256 mismatch for ${destPath}`, {
       hint: "The partial file was deleted. Run the command again. If this keeps happening, the registry entry may be wrong: report it.",
     });
   }
@@ -152,7 +152,7 @@ async function streamInto(args: StreamArgs): Promise<StreamResult> {
     return streamInto({ ...args, offset: 0 });
   }
   if (!(response.ok && response.body)) {
-    throw new TinyLLMError("DOWNLOAD_FAILED", `HTTP ${response.status} while downloading ${url}`, {
+    throw new NodeSlmError("DOWNLOAD_FAILED", `HTTP ${response.status} while downloading ${url}`, {
       hint: "Check the network connection, and that the model URL in the registry still resolves.",
     });
   }
@@ -183,12 +183,12 @@ async function streamInto(args: StreamArgs): Promise<StreamResult> {
   } catch (err) {
     await handle.close();
     if (signal?.aborted) {
-      throw new TinyLLMError("ABORTED", "Download was aborted", {
+      throw new NodeSlmError("ABORTED", "Download was aborted", {
         cause: err,
         hint: "Run the same command again to resume.",
       });
     }
-    throw new TinyLLMError("DOWNLOAD_FAILED", `Connection lost while downloading ${url}`, {
+    throw new NodeSlmError("DOWNLOAD_FAILED", `Connection lost while downloading ${url}`, {
       cause: err,
       hint: "Run the same command again. The partial file is kept, so the download resumes.",
     });
@@ -208,12 +208,12 @@ async function request(
     return await fetchFn(url, { headers, redirect: "follow", ...(signal ? { signal } : {}) });
   } catch (err) {
     if (signal?.aborted) {
-      throw new TinyLLMError("ABORTED", "Download was aborted", {
+      throw new NodeSlmError("ABORTED", "Download was aborted", {
         cause: err,
         hint: "Run the same command again to resume.",
       });
     }
-    throw new TinyLLMError("DOWNLOAD_FAILED", `Could not reach ${url}`, {
+    throw new NodeSlmError("DOWNLOAD_FAILED", `Could not reach ${url}`, {
       cause: err,
       hint: "Check the network connection. For an air-gapped machine, pull the model elsewhere and copy it into the cache dir.",
     });

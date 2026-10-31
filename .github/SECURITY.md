@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest minor release of `tiny-llm` receives security fixes.
+Only the latest minor release of `node-slm` receives security fixes.
 
 | Version | Supported |
 | --- | --- |
@@ -21,4 +21,4 @@ We will acknowledge within 48 hours and publish a fix within 14 days for high-se
 
 ## Scope
 
-This covers the `tiny-llm` package and its source. Native dependencies (`node-llama-cpp`) are tracked separately — report issues there.
+This covers the `node-slm` package and its source. Native dependencies (`node-llama-cpp`) are tracked separately — report issues there.

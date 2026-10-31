@@ -1,7 +1,7 @@
 // biome-ignore-all lint/performance/noBarrelFile: this file is the package's public entry point
-export type { TinyLLMErrorCode, TinyLLMErrorOptions } from "@/core/errors.js";
-export { isTinyLLMError, TINY_LLM_ERROR_CODES, TinyLLMError } from "@/core/errors.js";
-export { createTinyLLM } from "@/core/tiny-llm.js";
+export type { NodeSlmErrorCode, NodeSlmErrorOptions } from "@/core/errors.js";
+export { isNodeSlmError, NODE_SLM_ERROR_CODES, NodeSlmError } from "@/core/errors.js";
+export { createNodeSlm } from "@/core/node-slm.js";
 export type {
   FinishReason,
   GenerateOptions,
@@ -11,13 +11,13 @@ export type {
   ModelId,
   ModelInfo,
   ModelSource,
+  NodeSlm,
+  NodeSlmEvent,
+  NodeSlmOptions,
   ObjectOptions,
   ObjectResult,
   StreamResult,
   Timing,
-  TinyLLM,
-  TinyLLMEvent,
-  TinyLLMOptions,
   Usage,
   ZodLikeSchema,
 } from "@/core/types.js";

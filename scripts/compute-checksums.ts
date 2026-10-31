@@ -6,12 +6,12 @@
  *
  * Each file is streamed to disk and hashed as it arrives. The hash must equal the
  * Hugging Face LFS etag for the same file, or the script fails. Downloads go to the
- * tiny-llm cache dir, one at a time, and are deleted afterwards unless `--keep` is set.
+ * node-slm cache dir, one at a time, and are deleted afterwards unless `--keep` is set.
  */
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readGgufFileInfo } from "node-llama-cpp";
-import { isTinyLLMError } from "@/core/errors.js";
+import { isNodeSlmError } from "@/core/errors.js";
 import { resolveCacheDir } from "@/registry/cache.js";
 import { downloadFile } from "@/registry/download.js";
 import { MODEL_SOURCES, type RegistrySource } from "@/registry/sources.js";
@@ -56,7 +56,7 @@ async function lfsMetadata(url: string): Promise<LfsMetadata> {
 const MAX_ATTEMPTS = 6;
 
 /**
- * Downloads with tiny-llm's resumable downloader. A dropped connection resumes from the partial file.
+ * Downloads with node-slm's resumable downloader. A dropped connection resumes from the partial file.
  * The downloader hashes the stream and rejects any file whose SHA-256 differs from the LFS value.
  */
 async function downloadVerified(
@@ -85,7 +85,7 @@ async function downloadVerified(
       }
       return;
     } catch (err) {
-      const retryable = isTinyLLMError(err) && err.code === "DOWNLOAD_FAILED";
+      const retryable = isNodeSlmError(err) && err.code === "DOWNLOAD_FAILED";
       if (!retryable || attempt >= MAX_ATTEMPTS) {
         throw err;
       }
