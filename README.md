@@ -94,7 +94,7 @@ Examples live in [`examples/`](./examples), and agent skills in [`skills/`](./sk
 
 ## Status
 
-Version 0.1.0 is in development and has not been published to npm. The release process is described in [Development](./docs/DEVELOPMENT.md).
+Version 0.1.0 is published to npm as `ggml-node`. The release process is described in [Development](./docs/DEVELOPMENT.md).
 
 ## License
 
