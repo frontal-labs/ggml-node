@@ -14,7 +14,7 @@ labels: bug
 
 ## Environment
 
-- node-slm version:
+- ggml-node version:
 - Node.js version:
 - OS / platform:
 - Model used (e.g. `qwen2.5-0.5b`):
@@ -27,4 +27,4 @@ labels: bug
 
 ## What you tried
 
-<!-- Things you already checked: `node-slm doctor`, cache state, offline mode, etc. -->
+<!-- Things you already checked: `ggml-node doctor`, cache state, offline mode, etc. -->

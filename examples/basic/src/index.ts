@@ -1,10 +1,10 @@
 /**
  * The core API: generate, stream, and unload. Run from the repo root:
- *   bun run build && bun --filter '@node-slm/example-basic' start
+ *   bun run build && bun --filter '@ggml-node/example-basic' start
  */
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 
 const info = await ai.ready();
 console.log(

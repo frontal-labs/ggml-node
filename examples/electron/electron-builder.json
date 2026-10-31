@@ -1,5 +1,5 @@
 {
-  "appId": "com.example.node-slm",
+  "appId": "com.example.ggml-node",
   "asar": true,
   "asarUnpack": [
     "**/node_modules/node-llama-cpp/**",

@@ -1,5 +1,5 @@
 {
-  "name": "@node-slm/example-structured",
+  "name": "@ggml-node/example-structured",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "node-slm": "file:../..",
+    "ggml-node": "file:../..",
     "zod": "^4.6.7"
   }
 }

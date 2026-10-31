@@ -9,8 +9,8 @@ import type {
 } from "@ai-sdk/provider";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { languageModelFor, mapPrompt } from "@/ai/model.js";
-import { isNodeSlmError } from "@/core/errors.js";
-import { createNodeSlmWithDeps } from "@/core/node-slm.js";
+import { isGgmlNodeError } from "@/core/errors.js";
+import { createGgmlNodeWithDeps } from "@/core/ggml-node.js";
 import { createFakeBackend, type FakeBackend } from "../../helpers/fake-backend.js";
 
 const SHAPE = { blockCount: 1, headCountKv: 1, keyLength: 8, valueLength: 8 };
@@ -87,12 +87,12 @@ describe("mapPrompt", () => {
   });
 });
 
-describe("NodeSlmLanguageModel", () => {
+describe("GgmlNodeLanguageModel", () => {
   let dir: string;
   let backend: FakeBackend;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "node-slm-model-"));
+    dir = await mkdtemp(join(tmpdir(), "ggml-node-model-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
     backend = createFakeBackend({ respond: (messages) => `reply to ${messages.at(-1)?.content}` });
   });
@@ -102,11 +102,11 @@ describe("NodeSlmLanguageModel", () => {
   });
 
   function model() {
-    const llm = createNodeSlmWithDeps(
+    const llm = createGgmlNodeWithDeps(
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        env: { NODE_SLM_CACHE_DIR: dir },
+        env: { GGML_NODE_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
           cgroupCurrentBytes: async () => undefined,
@@ -121,7 +121,7 @@ describe("NodeSlmLanguageModel", () => {
   it("has the v4 spec identity fields", () => {
     const m = model();
     expect(m.specificationVersion).toBe("v4");
-    expect(m.provider).toBe("node-slm");
+    expect(m.provider).toBe("ggml-node");
     expect(m.modelId).toBe("qwen2.5-0.5b");
   });
 
@@ -169,7 +169,7 @@ describe("NodeSlmLanguageModel", () => {
         () => undefined,
         (e: unknown) => e,
       );
-    expect(isNodeSlmError(err) && err.code).toBe("INVALID_OPTIONS");
+    expect(isGgmlNodeError(err) && err.code).toBe("INVALID_OPTIONS");
   });
 
   it("doStream emits the spec part sequence in order", async () => {

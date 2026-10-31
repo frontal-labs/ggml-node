@@ -1,17 +1,17 @@
 # CLI
 
-Install the package, then run `npx node-slm`, or `bunx node-slm` in a Bun project.
+Install the package, then run `npx ggml-node`, or `bunx ggml-node` in a Bun project.
 
 ```text
-node-slm pull <modelId> [--dir <path>]     download and verify a model
-node-slm list [--json]                     models, cache state, size and license
-node-slm run <prompt> [--model <id>] [--json-schema <file>] [--json]
-node-slm bench [modelId] [--tokens <n>] [--json]
-node-slm doctor [--json]                   platform, memory, cache, and a backend check
-node-slm cache path                        print the cache directory
-node-slm cache clear [<modelId>]           delete cached files for one model or all
-node-slm --version
-node-slm --help
+ggml-node pull <modelId> [--dir <path>]     download and verify a model
+ggml-node list [--json]                     models, cache state, size and license
+ggml-node run <prompt> [--model <id>] [--json-schema <file>] [--json]
+ggml-node bench [modelId] [--tokens <n>] [--json]
+ggml-node doctor [--json]                   platform, memory, cache, and a backend check
+ggml-node cache path                        print the cache directory
+ggml-node cache clear [<modelId>]           delete cached files for one model or all
+ggml-node --version
+ggml-node --help
 ```
 
 ## Exit codes
@@ -35,8 +35,8 @@ A table of the registry: id, size, license, whether it is cached, and the cache 
 Generates one response. `--json-schema <file>` reads a JSON Schema file and prints a validated object. `--json` prints the result with usage and timing.
 
 ```sh
-npx node-slm run "What is a river?"
-npx node-slm run "Extract: Alex, 34, Lisbon" --json-schema person.schema.json
+npx ggml-node run "What is a river?"
+npx ggml-node run "Extract: Alex, 34, Lisbon" --json-schema person.schema.json
 ```
 
 ## `bench`
@@ -45,7 +45,7 @@ Measures a model on this machine: load time, time to first token, tokens per sec
 
 ## `doctor`
 
-Checks what node-slm needs, and says how to fix each problem:
+Checks what ggml-node needs, and says how to fix each problem:
 
 - platform, CPU and Node version
 - available memory, and any container limit

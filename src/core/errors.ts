@@ -1,4 +1,4 @@
-export const NODE_SLM_ERROR_CODES = [
+export const GGML_NODE_ERROR_CODES = [
   "MODEL_NOT_FOUND",
   "DOWNLOAD_FAILED",
   "CHECKSUM_MISMATCH",
@@ -13,21 +13,21 @@ export const NODE_SLM_ERROR_CODES = [
   "BACKEND_CRASHED",
 ] as const;
 
-export type NodeSlmErrorCode = (typeof NODE_SLM_ERROR_CODES)[number];
+export type GgmlNodeErrorCode = (typeof GGML_NODE_ERROR_CODES)[number];
 
-export interface NodeSlmErrorOptions {
+export interface GgmlNodeErrorOptions {
   cause?: unknown;
-  /** Actionable next step, e.g. "Run: npx node-slm pull qwen2.5-0.5b". Must be non-empty. */
+  /** Actionable next step, e.g. "Run: npx ggml-node pull qwen2.5-0.5b". Must be non-empty. */
   hint: string;
 }
 
-export class NodeSlmError extends Error {
-  override readonly name = "NodeSlmError";
-  readonly code: NodeSlmErrorCode;
+export class GgmlNodeError extends Error {
+  override readonly name = "GgmlNodeError";
+  readonly code: GgmlNodeErrorCode;
   readonly hint: string;
   override readonly cause: unknown;
 
-  constructor(code: NodeSlmErrorCode, message: string, options: NodeSlmErrorOptions) {
+  constructor(code: GgmlNodeErrorCode, message: string, options: GgmlNodeErrorOptions) {
     super(message);
     this.code = code;
     this.hint = options.hint;
@@ -35,6 +35,6 @@ export class NodeSlmError extends Error {
   }
 }
 
-export function isNodeSlmError(e: unknown): e is NodeSlmError {
-  return e instanceof NodeSlmError;
+export function isGgmlNodeError(e: unknown): e is GgmlNodeError {
+  return e instanceof GgmlNodeError;
 }

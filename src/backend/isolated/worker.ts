@@ -1,7 +1,7 @@
 import type { HostMessage, WireError, WorkerMessage } from "@/backend/isolated/protocol.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, JsonGrammar } from "@/backend/types.js";
-import { isNodeSlmError, NodeSlmError } from "@/core/errors.js";
+import { GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
 
 /**
  * The worker side of process isolation. It owns one backend and answers the host's requests. If the
@@ -25,7 +25,7 @@ export function runWorker(factory: () => Backend = createLlamaCppBackend): void 
   };
   const current = (): Backend => {
     if (!backend) {
-      throw new NodeSlmError("INVALID_OPTIONS", "The worker has no model loaded", {
+      throw new GgmlNodeError("INVALID_OPTIONS", "The worker has no model loaded", {
         hint: "Call ready() before generating.",
       });
     }
@@ -124,12 +124,12 @@ export function runWorker(factory: () => Backend = createLlamaCppBackend): void 
 }
 
 function toWire(err: unknown): WireError {
-  if (isNodeSlmError(err)) {
+  if (isGgmlNodeError(err)) {
     return { code: err.code, hint: err.hint, message: err.message };
   }
   return {
     code: "BACKEND_CRASHED",
-    hint: "Run: npx node-slm doctor. If this persists, report it with the stack trace.",
+    hint: "Run: npx ggml-node doctor. If this persists, report it with the stack trace.",
     message: err instanceof Error ? err.message : String(err),
   };
 }

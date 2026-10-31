@@ -1,5 +1,5 @@
-// biome-ignore-all lint/style/useErrorCause: NodeSlmError takes its cause inside the options object (see src/core/errors.ts)
-import { NodeSlmError } from "@/core/errors.js";
+// biome-ignore-all lint/style/useErrorCause: GgmlNodeError takes its cause inside the options object (see src/core/errors.ts)
+import { GgmlNodeError } from "@/core/errors.js";
 import type { JsonSchemaObject, Message, ZodLikeSchema } from "@/core/types.js";
 
 /**
@@ -65,13 +65,17 @@ export async function zodToJsonSchema(schema: ZodLikeSchema): Promise<JsonSchema
   try {
     zod = await import("zod");
   } catch (err) {
-    throw new NodeSlmError("INVALID_OPTIONS", "A Zod schema was passed, but zod is not installed", {
-      cause: err,
-      hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
-    });
+    throw new GgmlNodeError(
+      "INVALID_OPTIONS",
+      "A Zod schema was passed, but zod is not installed",
+      {
+        cause: err,
+        hint: "Install zod (npm i zod), or pass a plain JSON Schema object instead.",
+      },
+    );
   }
   if (typeof zod.toJSONSchema !== "function") {
-    throw new NodeSlmError("INVALID_OPTIONS", "Only Zod 4 schemas are supported", {
+    throw new GgmlNodeError("INVALID_OPTIONS", "Only Zod 4 schemas are supported", {
       hint: "Upgrade to zod 4, or pass a plain JSON Schema object.",
     });
   }
@@ -197,8 +201,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function unsupported(path: string, reason: string): NodeSlmError {
-  return new NodeSlmError("INVALID_OPTIONS", `Unsupported JSON Schema at ${path}: ${reason}`, {
+function unsupported(path: string, reason: string): GgmlNodeError {
+  return new GgmlNodeError("INVALID_OPTIONS", `Unsupported JSON Schema at ${path}: ${reason}`, {
     hint: "Remove the unsupported constraint (for example a numeric minimum or a regex pattern), or validate that rule in your own code after the call.",
   });
 }
@@ -222,8 +226,8 @@ export function withSchemaInstruction(
 }
 
 /** Maps a parse or validation failure to `SCHEMA_VIOLATION`. */
-export function schemaViolation(detail: string, cause?: unknown): NodeSlmError {
-  return new NodeSlmError(
+export function schemaViolation(detail: string, cause?: unknown): GgmlNodeError {
+  return new GgmlNodeError(
     "SCHEMA_VIOLATION",
     `The model output did not match the schema: ${detail}`,
     {

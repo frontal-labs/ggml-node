@@ -38,11 +38,11 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Read(~/Library/Caches/node-slm/**)"
+      "Read(~/Library/Caches/ggml-node/**)"
     ]
   },
   "env": {
-    "NODE_SLM_E2E": "0"
+    "GGML_NODE_E2E": "0"
   },
   "includeCoAuthoredBy": true
 }

@@ -1,10 +1,10 @@
 # API reference
 
-All public names are exported from `node-slm`. The AI SDK provider is `node-slm/ai`, and the test helpers are `node-slm/testing`.
+All public names are exported from `ggml-node`. The AI SDK provider is `ggml-node/ai`, and the test helpers are `ggml-node/testing`.
 
-## `createNodeSlm(options): NodeSlm`
+## `createGgmlNode(options): GgmlNode`
 
-Creates a handle. No model loads until the first call, or until `ready()`. Invalid options throw `NodeSlmError` (`INVALID_OPTIONS`) immediately.
+Creates a handle. No model loads until the first call, or until `ready()`. Invalid options throw `GgmlNodeError` (`INVALID_OPTIONS`) immediately.
 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -16,12 +16,12 @@ Creates a handle. No model loads until the first call, or until `ready()`. Inval
 | `gpu` | `"auto"` or `false` | `"auto"` | Metal, CUDA or Vulkan when available. |
 | `isolation` | `"none"` or `"process"` | `"none"` | `"process"` runs the backend in a child process. See [isolation](./ISOLATION.md). |
 | `cacheDir` | string | see [configuration](./CONFIGURATION.md) | Where models are stored. |
-| `offline` | boolean | `false` | Never download. `NODE_SLM_OFFLINE=1` also turns this on. |
+| `offline` | boolean | `false` | Never download. `GGML_NODE_OFFLINE=1` also turns this on. |
 | `autoDownload` | boolean | `true` | Download a missing registry model on first use. |
 | `acceptLicense` | boolean | `false` | Required for a model whose license is not Apache-2.0 or MIT. |
 | `onEvent` | `(event) => void` | none | Local event hook. Nothing is sent anywhere. Errors thrown by the hook are ignored. |
 
-## `NodeSlm`
+## `GgmlNode`
 
 ### `ready(): Promise<ModelInfo>`
 
@@ -99,7 +99,7 @@ interface GenerateResult {
 
 ## Errors
 
-Every error from the public API is an `NodeSlmError` with a `code`, a non-empty `hint`, and an optional `cause`. Use `isNodeSlmError(err)` to test for it.
+Every error from the public API is an `GgmlNodeError` with a `code`, a non-empty `hint`, and an optional `cause`. Use `isGgmlNodeError(err)` to test for it.
 
 | Code | When |
 | --- | --- |
@@ -118,5 +118,5 @@ Every error from the public API is an `NodeSlmError` with a `code`, a non-empty 
 
 ## Exports
 
-- Values: `createNodeSlm`, `NodeSlmError`, `isNodeSlmError`, `NODE_SLM_ERROR_CODES`.
-- Types: `NodeSlm`, `NodeSlmOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `ModelInfo`, `NodeSlmEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `NodeSlmErrorCode`.
+- Values: `createGgmlNode`, `GgmlNodeError`, `isGgmlNodeError`, `GGML_NODE_ERROR_CODES`.
+- Types: `GgmlNode`, `GgmlNodeOptions`, `GenerateOptions`, `GenerateResult`, `StreamResult`, `ObjectOptions`, `ObjectResult`, `ModelInfo`, `GgmlNodeEvent`, `ModelId`, `Message`, `Usage`, `Timing`, `FinishReason`, `GgmlNodeErrorCode`.

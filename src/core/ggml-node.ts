@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/useErrorCause: NodeSlmError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: GgmlNodeError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { type ModelMeta, readModelMeta } from "@/backend/gguf-meta.js";
@@ -6,7 +6,7 @@ import { createIsolatedBackend } from "@/backend/isolated/host.js";
 import { createLlamaCppBackend } from "@/backend/llama-cpp.js";
 import type { Backend, BackendRequest, BackendResult, ParsedOutput } from "@/backend/types.js";
 import { AsyncChannel } from "@/core/channel.js";
-import { isNodeSlmError, NodeSlmError } from "@/core/errors.js";
+import { GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
 import { emitEvent } from "@/core/events.js";
 import {
   estimateModelBytes,
@@ -16,7 +16,7 @@ import {
 } from "@/core/memory.js";
 import { fitToBudget, type NormalizedRequest, normalizeRequest } from "@/core/prompt.js";
 import { abortedError, Scheduler } from "@/core/scheduler.js";
-import { firstIssue, nodeSlmOptionsSchema } from "@/core/schemas.js";
+import { firstIssue, ggmlNodeOptionsSchema } from "@/core/schemas.js";
 import {
   assertSupportedSchema,
   isZodLike,
@@ -27,16 +27,16 @@ import {
 import type {
   GenerateOptions,
   GenerateResult,
+  GgmlNode,
+  GgmlNodeOptions,
   JsonSchemaObject,
   ModelInfo,
-  NodeSlm,
-  NodeSlmOptions,
   ObjectOptions,
   ObjectResult,
   StreamResult,
   ZodLikeSchema,
 } from "@/core/types.js";
-import { env as defaultEnv, type NodeSlmEnv } from "@/env.js";
+import { env as defaultEnv, type GgmlNodeEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { ensureModel } from "@/registry/ensure.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
@@ -44,19 +44,19 @@ import { MODELS, type ModelId } from "@/registry/models.js";
 const DEFAULT_CONTEXT_CAP = 4096;
 
 /** Injection points. Production uses the defaults. Tests pass a fake backend and fixed metadata. */
-export interface NodeSlmDeps {
+export interface GgmlNodeDeps {
   createBackend: () => Backend;
   /** Backend for `isolation: "process"`: the native backend in a child process. */
   createIsolatedBackend: () => Backend;
   /** The environment for offline and cache dir resolution. Defaults to the validated `env`. */
-  env: NodeSlmEnv;
+  env: GgmlNodeEnv;
   memory: MemoryReaders;
-  /** Whether a custom model path exists. Injected so tests and `node-slm/testing` need no file. */
+  /** Whether a custom model path exists. Injected so tests and `ggml-node/testing` need no file. */
   pathExists: (path: string) => Promise<boolean>;
   readMeta: (path: string) => Promise<ModelMeta>;
 }
 
-export const defaultDeps: NodeSlmDeps = {
+export const defaultDeps: GgmlNodeDeps = {
   createBackend: createLlamaCppBackend,
   createIsolatedBackend: () => createIsolatedBackend(),
   env: defaultEnv,
@@ -95,15 +95,15 @@ interface RunOutcome {
 }
 
 /** Creates an in-process inference handle. Models load lazily on first use, or on `ready()`. */
-export function createNodeSlm(options: NodeSlmOptions): NodeSlm {
-  return createNodeSlmWithDeps(options, defaultDeps);
+export function createGgmlNode(options: GgmlNodeOptions): GgmlNode {
+  return createGgmlNodeWithDeps(options, defaultDeps);
 }
 
-export function createNodeSlmWithDeps(
-  options: NodeSlmOptions,
-  overrides: Partial<NodeSlmDeps> = {},
-): NodeSlm {
-  const deps: NodeSlmDeps = { ...defaultDeps, ...overrides };
+export function createGgmlNodeWithDeps(
+  options: GgmlNodeOptions,
+  overrides: Partial<GgmlNodeDeps> = {},
+): GgmlNode {
+  const deps: GgmlNodeDeps = { ...defaultDeps, ...overrides };
   validateOptions(options);
 
   const id: ModelId | "custom" = typeof options.model === "string" ? options.model : "custom";
@@ -149,7 +149,7 @@ export function createNodeSlmWithDeps(
       license = "unknown";
       contextCap = Number.POSITIVE_INFINITY;
       if (!(await deps.pathExists(path))) {
-        throw new NodeSlmError("MODEL_NOT_FOUND", `No file at ${path}`, {
+        throw new GgmlNodeError("MODEL_NOT_FOUND", `No file at ${path}`, {
           hint: "Check the path. Custom models must be GGUF files on disk.",
         });
       }
@@ -160,7 +160,7 @@ export function createNodeSlmWithDeps(
       options.contextSize ??
       Math.min(Math.min(contextCap, meta.trainContextSize), DEFAULT_CONTEXT_CAP);
     if (!Number.isInteger(contextSize) || contextSize < 1) {
-      throw new NodeSlmError("INVALID_OPTIONS", "contextSize must be a positive integer", {
+      throw new GgmlNodeError("INVALID_OPTIONS", "contextSize must be a positive integer", {
         hint: "Set contextSize to a whole number, or leave it unset.",
       });
     }
@@ -194,7 +194,7 @@ export function createNodeSlmWithDeps(
       return { backend, info, scheduler: new Scheduler({ maxQueue, sequences: maxConcurrency }) };
     } catch (err) {
       await backend.unload().catch(() => undefined);
-      throw toNodeSlmError(err);
+      throw toGgmlNodeError(err);
     }
   }
 
@@ -230,7 +230,7 @@ export function createNodeSlmWithDeps(
     const { backend, scheduler, info } = state;
     const budget = info.contextSize - req.maxTokens;
     if (budget <= 0) {
-      throw new NodeSlmError(
+      throw new GgmlNodeError(
         "INVALID_OPTIONS",
         `maxTokens (${req.maxTokens}) must be less than contextSize (${info.contextSize})`,
         { hint: "Lower maxTokens or raise contextSize." },
@@ -267,7 +267,7 @@ export function createNodeSlmWithDeps(
       };
       outcome = await backend.generate(lease.index, request, (text) => onDelta?.(text));
     } catch (err) {
-      throw toNodeSlmError(err);
+      throw toGgmlNodeError(err);
     } finally {
       lease.release();
     }
@@ -301,7 +301,7 @@ export function createNodeSlmWithDeps(
       emitEvent(onEvent, { id: requestId, result: withoutText(result), type: "request:done" });
       return result;
     } catch (err) {
-      emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toGgmlNodeError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -331,7 +331,7 @@ export function createNodeSlmWithDeps(
       const { text: raw, ...rest } = result;
       return { ...rest, object: value, raw };
     } catch (err) {
-      emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
+      emitEvent(onEvent, { error: toGgmlNodeError(err), id: requestId, type: "request:error" });
       throw err;
     }
   }
@@ -367,13 +367,13 @@ export function createNodeSlmWithDeps(
         return finished;
       },
       (err: unknown) => {
-        if (isNodeSlmError(err) && err.code === "ABORTED" && controller.signal.aborted) {
+        if (isGgmlNodeError(err) && err.code === "ABORTED" && controller.signal.aborted) {
           // Aborted while queued: nothing was generated. Resolve, as the contract says.
           chunks.close();
           return emptyAbortResult();
         }
         chunks.fail(err);
-        emitEvent(onEvent, { error: toNodeSlmError(err), id: requestId, type: "request:error" });
+        emitEvent(onEvent, { error: toGgmlNodeError(err), id: requestId, type: "request:error" });
         throw err;
       },
     );
@@ -412,7 +412,7 @@ export function createNodeSlmWithDeps(
     info(): ModelInfo | null {
       return loaded?.info ?? null;
     },
-    object: object as NodeSlm["object"],
+    object: object as GgmlNode["object"],
     async ready(): Promise<ModelInfo> {
       const { state } = await ensureLoaded();
       return state.info;
@@ -440,14 +440,14 @@ export function createNodeSlmWithDeps(
   };
 }
 
-function validateOptions(options: NodeSlmOptions): void {
-  const parsed = nodeSlmOptionsSchema.safeParse(options);
+function validateOptions(options: GgmlNodeOptions): void {
+  const parsed = ggmlNodeOptionsSchema.safeParse(options);
   if (parsed.success) {
     return;
   }
   const issue = firstIssue(parsed.error);
-  throw new NodeSlmError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
-    hint: "Check createNodeSlm options against docs/API.md.",
+  throw new GgmlNodeError("INVALID_OPTIONS", `${issue.path}: ${issue.message}`, {
+    hint: "Check createGgmlNode options against docs/API.md.",
   });
 }
 
@@ -482,7 +482,7 @@ function checkStructured(
 /** Checks that a plain schema argument is a JSON Schema object before it reaches the grammar. */
 function asJsonSchemaObject(schema: unknown): JsonSchemaObject {
   if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
-    throw new NodeSlmError(
+    throw new GgmlNodeError(
       "INVALID_OPTIONS",
       "schema must be a Zod schema or a JSON Schema object",
       {
@@ -498,16 +498,16 @@ function withoutText(result: GenerateResult): Omit<GenerateResult, "text"> {
   return rest;
 }
 
-function toNodeSlmError(err: unknown): NodeSlmError {
-  if (isNodeSlmError(err)) {
+function toGgmlNodeError(err: unknown): GgmlNodeError {
+  if (isGgmlNodeError(err)) {
     return err;
   }
-  return new NodeSlmError(
+  return new GgmlNodeError(
     "BACKEND_CRASHED",
     err instanceof Error ? err.message : "Unknown backend error",
     {
       cause: err,
-      hint: "Run: npx node-slm doctor. If this persists, report it with the stack trace.",
+      hint: "Run: npx ggml-node doctor. If this persists, report it with the stack trace.",
     },
   );
 }

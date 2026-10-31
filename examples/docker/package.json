@@ -1,13 +1,13 @@
 {
-  "name": "@node-slm/example-docker",
+  "name": "@ggml-node/example-docker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t node-slm-example .",
+    "docker:build": "cd ../.. && bun run build && bun pm pack && docker build -f examples/docker/Dockerfile -t ggml-node-example .",
     "start": "node src/server.mjs"
   },
   "dependencies": {
-    "node-slm": "file:../.."
+    "ggml-node": "file:../.."
   }
 }

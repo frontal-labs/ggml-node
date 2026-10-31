@@ -1,12 +1,12 @@
 /**
  * Structured output with Zod: a classification and a nested extraction. The grammar guarantees the
  * shape. Zod checks the values again. Run from the repo root:
- *   bun run build && bun --filter '@node-slm/example-structured' start
+ *   bun run build && bun --filter '@ggml-node/example-structured' start
  */
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 import { z } from "zod";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 
 const review = z.object({
   confidence: z.enum(["low", "medium", "high"]),

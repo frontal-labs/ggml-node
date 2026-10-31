@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`help > lists every command (snapshot) 1`] = `
-"Usage: node-slm [options] [command]
+"Usage: ggml-node [options] [command]
 
 Run a small LLM in-process. No daemon, no API key, no port.
 

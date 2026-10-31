@@ -2,9 +2,9 @@ import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isNodeSlmError } from "@/core/errors.js";
-import { createNodeSlmWithDeps, type NodeSlmDeps } from "@/core/node-slm.js";
-import type { NodeSlm, NodeSlmEvent, NodeSlmOptions } from "@/core/types.js";
+import { isGgmlNodeError } from "@/core/errors.js";
+import { createGgmlNodeWithDeps, type GgmlNodeDeps } from "@/core/ggml-node.js";
+import type { GgmlNode, GgmlNodeEvent, GgmlNodeOptions } from "@/core/types.js";
 import { MODELS } from "@/registry/models.js";
 import { createFakeBackend, type FakeBackendOptions } from "../../helpers/fake-backend.js";
 
@@ -13,17 +13,17 @@ const SHAPE = { blockCount: 2, headCountKv: 1, keyLength: 8, valueLength: 8 };
 function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   return p.then(
     () => undefined,
-    (e: unknown) => (isNodeSlmError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
+    (e: unknown) => (isGgmlNodeError(e) ? e.code : `NOT_LOCAL_LLM:${String(e)}`),
   );
 }
 
-describe("createNodeSlm", () => {
+describe("createGgmlNode", () => {
   let dir: string;
   let modelPath: string;
-  let events: NodeSlmEvent[];
+  let events: GgmlNodeEvent[];
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "node-slm-core-"));
+    dir = await mkdtemp(join(tmpdir(), "ggml-node-core-"));
     modelPath = join(dir, "custom.gguf");
     await writeFile(modelPath, Buffer.alloc(1000));
     events = [];
@@ -34,14 +34,14 @@ describe("createNodeSlm", () => {
   });
 
   function make(
-    options: Partial<NodeSlmOptions> & Pick<NodeSlmOptions, "model">,
+    options: Partial<GgmlNodeOptions> & Pick<GgmlNodeOptions, "model">,
     backendOptions: FakeBackendOptions = {},
-    depsOverride: Partial<NodeSlmDeps> = {},
+    depsOverride: Partial<GgmlNodeDeps> = {},
   ) {
     const backend = createFakeBackend(backendOptions);
-    const deps: Partial<NodeSlmDeps> = {
+    const deps: Partial<GgmlNodeDeps> = {
       createBackend: () => backend,
-      env: { NODE_SLM_CACHE_DIR: dir },
+      env: { GGML_NODE_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
         cgroupCurrentBytes: async () => undefined,
@@ -50,8 +50,8 @@ describe("createNodeSlm", () => {
       readMeta: async () => ({ shape: SHAPE, sizeBytes: 1000, trainContextSize: 4096 }),
       ...depsOverride,
     };
-    const ai: NodeSlm = createNodeSlmWithDeps(
-      { onEvent: (e) => events.push(e), ...options } as NodeSlmOptions,
+    const ai: GgmlNode = createGgmlNodeWithDeps(
+      { onEvent: (e) => events.push(e), ...options } as GgmlNodeOptions,
       deps,
     );
     return { ai, backend };
@@ -135,8 +135,8 @@ describe("createNodeSlm", () => {
         () => undefined,
         (e: unknown) => e,
       );
-      expect(isNodeSlmError(err) && err.code).toBe("BACKEND_CRASHED");
-      expect(isNodeSlmError(err) && err.hint.length > 0).toBe(true);
+      expect(isGgmlNodeError(err) && err.code).toBe("BACKEND_CRASHED");
+      expect(isGgmlNodeError(err) && err.hint.length > 0).toBe(true);
       expect(events.some((e) => e.type === "request:error")).toBe(true);
     });
 
@@ -171,7 +171,7 @@ describe("createNodeSlm", () => {
         })
         .catch((e: unknown) => e);
       // The last user message is never dropped, so this cannot fit and must fail.
-      expect(isNodeSlmError(r) && r.code).toBe("CONTEXT_OVERFLOW");
+      expect(isGgmlNodeError(r) && r.code).toBe("CONTEXT_OVERFLOW");
     });
   });
 
@@ -276,7 +276,7 @@ describe("createNodeSlm", () => {
         make({ model: "gpt-4o" as never });
         expect.unreachable();
       } catch (err) {
-        expect(isNodeSlmError(err) && err.code).toBe("INVALID_OPTIONS");
+        expect(isGgmlNodeError(err) && err.code).toBe("INVALID_OPTIONS");
       }
     });
 

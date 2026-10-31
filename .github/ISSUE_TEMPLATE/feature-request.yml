@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for node-slm
+about: Suggest an idea for ggml-node
 labels: enhancement
 ---
 ## Problem
@@ -8,7 +8,7 @@ labels: enhancement
 <!-- What is missing or limiting? -->
 ## Proposed solution
 
-<!-- What would you like node-slm to do? -->
+<!-- What would you like ggml-node to do? -->
 ## Alternatives considered
 
 <!-- Other approaches you rejected, and why. -->

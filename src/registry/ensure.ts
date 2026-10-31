@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { NodeSlmError } from "@/core/errors.js";
-import type { NodeSlmEvent } from "@/core/types.js";
+import { GgmlNodeError } from "@/core/errors.js";
+import type { GgmlNodeEvent } from "@/core/types.js";
 import { downloadFile } from "@/registry/download.js";
 import { MODELS, type ModelId } from "@/registry/models.js";
 
@@ -27,7 +27,7 @@ export interface EnsureModelOptions {
   fetch?: typeof fetch | undefined;
   /** Whether offline mode is what blocked the download. Only changes the hint. */
   offline: boolean;
-  onEvent?: ((event: NodeSlmEvent) => void) | undefined;
+  onEvent?: ((event: GgmlNodeEvent) => void) | undefined;
   signal?: AbortSignal | undefined;
 }
 
@@ -58,7 +58,7 @@ export async function ensureEntry(
   options: EnsureModelOptions,
 ): Promise<string> {
   if (!(PERMISSIVE_LICENSES.has(model.license) || options.acceptLicense)) {
-    throw new NodeSlmError(
+    throw new GgmlNodeError(
       "LICENSE_NOT_ACCEPTED",
       `Model ${model.id} is licensed under ${model.license}`,
       {
@@ -73,10 +73,10 @@ export async function ensureEntry(
   }
 
   if (!options.allowDownload) {
-    throw new NodeSlmError("MODEL_NOT_FOUND", `Model ${model.id} is not in the cache`, {
+    throw new GgmlNodeError("MODEL_NOT_FOUND", `Model ${model.id} is not in the cache`, {
       hint: options.offline
-        ? `Offline mode is on. Run "npx node-slm pull ${model.id}" while online, or copy the file to ${options.cacheDir}.`
-        : `Run: npx node-slm pull ${model.id}`,
+        ? `Offline mode is on. Run "npx ggml-node pull ${model.id}" while online, or copy the file to ${options.cacheDir}.`
+        : `Run: npx ggml-node pull ${model.id}`,
     });
   }
 

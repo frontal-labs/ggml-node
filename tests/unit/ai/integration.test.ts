@@ -5,7 +5,7 @@ import { generateObject, generateText, streamText } from "ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { languageModelFor } from "@/ai/model.js";
-import { createNodeSlmWithDeps } from "@/core/node-slm.js";
+import { createGgmlNodeWithDeps } from "@/core/ggml-node.js";
 import { createFakeBackend } from "../../helpers/fake-backend.js";
 
 /**
@@ -15,7 +15,7 @@ describe("AI SDK integration (fake backend)", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "node-slm-"));
+    dir = await mkdtemp(join(tmpdir(), "ggml-node-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
   });
 
@@ -25,11 +25,11 @@ describe("AI SDK integration (fake backend)", () => {
 
   function modelWith(respond: (messages: { role: string; content: string }[]) => string) {
     const backend = createFakeBackend({ respond });
-    const llm = createNodeSlmWithDeps(
+    const llm = createGgmlNodeWithDeps(
       { model: { path: join(dir, "m.gguf") } },
       {
         createBackend: () => backend,
-        env: { NODE_SLM_CACHE_DIR: dir },
+        env: { GGML_NODE_CACHE_DIR: dir },
         memory: {
           availableSystemBytes: async () => 1e12,
           cgroupCurrentBytes: async () => undefined,

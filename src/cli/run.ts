@@ -4,13 +4,13 @@ import {
   benchModel,
   doctor,
   doctorExitCode,
-  type NodeSlmFactory,
+  type GgmlNodeFactory,
   runPrompt,
 } from "@/cli/commands.js";
-import { isNodeSlmError, NodeSlmError } from "@/core/errors.js";
-import { createNodeSlm } from "@/core/node-slm.js";
+import { GgmlNodeError, isGgmlNodeError } from "@/core/errors.js";
+import { createGgmlNode } from "@/core/ggml-node.js";
 import { listOptionsSchema, pullOptionsSchema } from "@/core/schemas.js";
-import { env as defaultEnv, type NodeSlmEnv } from "@/env.js";
+import { env as defaultEnv, type GgmlNodeEnv } from "@/env.js";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 import { downloadFile, verifyFile } from "@/registry/download.js";
 import { isModelPresent, modelFilePath } from "@/registry/ensure.js";
@@ -21,9 +21,9 @@ import { VERSION } from "@/version.js";
 export const EXIT = { ENVIRONMENT_ERROR: 2, OK: 0, USER_ERROR: 1 } as const;
 
 export interface CliIO {
-  /** Builds the NodeSlm used by run, bench and doctor. Tests inject the mock; the default is the real one. */
-  createNodeSlm?: NodeSlmFactory;
-  env?: NodeSlmEnv;
+  /** Builds the GgmlNode used by run, bench and doctor. Tests inject the mock; the default is the real one. */
+  createGgmlNode?: GgmlNodeFactory;
+  env?: GgmlNodeEnv;
   fetch?: typeof fetch;
   stderr: (text: string) => void;
   /** Whether stderr is a terminal. Progress lines are only drawn when it is. */
@@ -58,11 +58,11 @@ export interface CommandState {
 
 export function createProgram(
   io: CliIO,
-  env: NodeSlmEnv = defaultEnv,
+  env: GgmlNodeEnv = defaultEnv,
   state: CommandState = { exitCode: EXIT.OK },
 ): Command {
   const program = new Command()
-    .name("node-slm")
+    .name("ggml-node")
     .description("Run a small LLM in-process. No daemon, no API key, no port.")
     .version(VERSION, "-v, --version")
     .exitOverride()
@@ -92,7 +92,7 @@ export function createProgram(
       await list(options.json, io, env);
     });
 
-  const factory: NodeSlmFactory = io.createNodeSlm ?? ((options) => createNodeSlm(options));
+  const factory: GgmlNodeFactory = io.createGgmlNode ?? ((options) => createGgmlNode(options));
 
   program
     .command("run")
@@ -125,9 +125,13 @@ export function createProgram(
     .option("--json", "machine-readable output")
     .action(async (modelId: ModelId, raw: { tokens: number; json?: boolean }) => {
       if (!Number.isInteger(raw.tokens) || raw.tokens < 1) {
-        throw new NodeSlmError("INVALID_OPTIONS", "--tokens must be a whole number of at least 1", {
-          hint: "Pass --tokens 128, for example.",
-        });
+        throw new GgmlNodeError(
+          "INVALID_OPTIONS",
+          "--tokens must be a whole number of at least 1",
+          {
+            hint: "Pass --tokens 128, for example.",
+          },
+        );
       }
       const result = await benchModel(modelId, raw.tokens, factory, env);
       if (raw.json) {
@@ -187,7 +191,7 @@ export function createProgram(
 }
 
 function reportError(err: unknown, io: CliIO): number {
-  if (isNodeSlmError(err)) {
+  if (isGgmlNodeError(err)) {
     io.stderr(`error [${err.code}]: ${err.message}\n  hint: ${err.hint}\n`);
     return err.code === "INVALID_OPTIONS" || err.code === "MODEL_NOT_FOUND"
       ? EXIT.USER_ERROR
@@ -202,14 +206,14 @@ async function pull(
   modelId: ModelId,
   dir: string | undefined,
   io: CliIO,
-  env: NodeSlmEnv,
+  env: GgmlNodeEnv,
 ): Promise<void> {
   const entry = MODELS[modelId];
   const cacheDir = dir ?? resolveCacheDir({ env });
 
   if (resolveOffline(undefined, env)) {
-    throw new NodeSlmError("INVALID_OPTIONS", "pull needs the network, but offline mode is on", {
-      hint: "Unset NODE_SLM_OFFLINE, then run pull again.",
+    throw new GgmlNodeError("INVALID_OPTIONS", "pull needs the network, but offline mode is on", {
+      hint: "Unset GGML_NODE_OFFLINE, then run pull again.",
     });
   }
 
@@ -247,7 +251,7 @@ async function pull(
   io.stdout(`${path}\n`);
 }
 
-async function list(json: boolean, io: CliIO, env: NodeSlmEnv): Promise<void> {
+async function list(json: boolean, io: CliIO, env: GgmlNodeEnv): Promise<void> {
   const dir = resolveCacheDir({ env });
   const rows = await Promise.all(
     MODEL_IDS.map(async (id) => {
@@ -280,7 +284,11 @@ async function list(json: boolean, io: CliIO, env: NodeSlmEnv): Promise<void> {
   io.stdout(`\nCache dir: ${dir}\n`);
 }
 
-async function clearCache(modelId: ModelId | undefined, io: CliIO, env: NodeSlmEnv): Promise<void> {
+async function clearCache(
+  modelId: ModelId | undefined,
+  io: CliIO,
+  env: GgmlNodeEnv,
+): Promise<void> {
   const dir = resolveCacheDir({ env });
   const targets: readonly ModelId[] = modelId ? [modelId] : MODEL_IDS;
   // Only the registry's own file names are touched, along with their partial and lock files.

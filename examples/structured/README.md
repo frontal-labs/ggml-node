@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@node-slm/example-structured' start
+bun --filter '@ggml-node/example-structured' start
 ```
 
 ## Notes

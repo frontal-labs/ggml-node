@@ -1,5 +1,5 @@
 {
-  "name": "node-slm",
+  "name": "ggml-node",
   "version": "0.2.0",
   "description": "An LLM inside your Node process. No daemon, no API key, no port.",
   "keywords": [
@@ -11,13 +11,13 @@
     "structured-output",
     "offline"
   ],
-  "homepage": "https://github.com/frontal-labs/node-slm#readme",
+  "homepage": "https://github.com/frontal-labs/ggml-node#readme",
   "bugs": {
-    "url": "https://github.com/frontal-labs/node-slm/issues"
+    "url": "https://github.com/frontal-labs/ggml-node/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/frontal-labs/node-slm.git"
+    "url": "git+https://github.com/frontal-labs/ggml-node.git"
   },
   "license": "Apache-2.0",
   "author": "Frontal Labs",
@@ -38,7 +38,7 @@
     }
   },
   "bin": {
-    "node-slm": "./dist/cli/index.js"
+    "ggml-node": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -59,11 +59,11 @@
     "release": "bun run verify && bun run release:publish",
     "release:publish": "changeset publish",
     "test": "vitest run tests/unit",
-    "test:e2e": "NODE_SLM_E2E=1 vitest run tests/e2e",
+    "test:e2e": "GGML_NODE_E2E=1 vitest run tests/e2e",
     "typecheck": "tsc --noEmit",
     "ultracite:check": "bun run scripts/sync-ultracite.ts --check",
     "ultracite:sync": "bun run scripts/sync-ultracite.ts",
-    "verify": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "verify": "bun run lint && bun run build && bun run typecheck && bun run test",
     "version-packages": "changeset version"
   },
   "dependencies": {

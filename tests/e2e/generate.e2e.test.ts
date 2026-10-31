@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { env } from "@/env.js";
-import { createNodeSlm } from "@/index.js";
+import { createGgmlNode } from "@/index.js";
 
 /**
- * Real model, real backend. Opt-in: set NODE_SLM_E2E=1. Downloads the default model on first run.
+ * Real model, real backend. Opt-in: set GGML_NODE_E2E=1. Downloads the default model on first run.
  */
-const enabled = env.NODE_SLM_E2E === "1";
+const enabled = env.GGML_NODE_E2E === "1";
 
 describe.skipIf(!enabled)("e2e: default model", () => {
-  const ai = createNodeSlm({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
+  const ai = createGgmlNode({ maxConcurrency: 1, model: "qwen2.5-0.5b" });
 
   it("loads and generates text with usage and timing", async () => {
     const r = await ai.generate({

@@ -1,12 +1,12 @@
 # Development
 
-This page is for people working on node-slm itself. Users of the package want [getting started](./GETTING_STARTED.md).
+This page is for people working on ggml-node itself. Users of the package want [getting started](./GETTING_STARTED.md).
 
 ## Setup
 
 ```sh
-git clone git@github.com:frontal-labs/node-slm.git
-cd node-slm
+git clone git@github.com:frontal-labs/ggml-node.git
+cd ggml-node
 bun install
 bun run verify
 ```
@@ -22,7 +22,7 @@ Bun 1.3.14 is the package manager and script runner (`packageManager` in `packag
 | `bun run format` | Biome format and fix |
 | `bun run typecheck` | `tsc --noEmit` over `src`, `tests`, `scripts` and the examples |
 | `bun run test` | unit tests (`tests/unit`): no network, no real model |
-| `bun run test:e2e` | real-model tests (`tests/e2e`). Needs `NODE_SLM_E2E=1`, a cached default model, and `bun run build` for the isolation suite |
+| `bun run test:e2e` | real-model tests (`tests/e2e`). Needs `GGML_NODE_E2E=1`, a cached default model, and `bun run build` for the isolation suite |
 | `bun run build` | tsup: the library, the CLI, the testing entry and the isolation worker |
 | `bun run registry:generate` | downloads each registry model, verifies it against Hugging Face's LFS hash, and rewrites `src/registry/models.ts` |
 | `bun run ultracite:sync` | writes `biome.json` from `ultracite.json` |
@@ -41,7 +41,7 @@ Skip a hook with `git commit --no-verify` only for amending a message or rebasin
 
 ## Layout
 
-- `src/` is the library. Import it with the `@/` alias (`@/core/node-slm.js`). Relative imports into `src/` are not allowed.
+- `src/` is the library. Import it with the `@/` alias (`@/core/ggml-node.js`). Relative imports into `src/` are not allowed.
 - `src/env.ts` is the only module that reads `process.env`.
 - `src/core/` holds the public handle, scheduler, prompt handling, schemas, memory preflight and structured output.
 - `src/backend/` holds the `node-llama-cpp` backend and the isolated (child-process) backend.

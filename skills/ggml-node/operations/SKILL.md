@@ -1,18 +1,18 @@
 ---
-name: node-slm-operations
-description: Operate node-slm on a real machine or in a container. Covers pulling and verifying models, the doctor and bench commands, air-gapped installs, Docker and Electron, and reading the CLI exit codes.
+name: ggml-node-operations
+description: Operate ggml-node on a real machine or in a container. Covers pulling and verifying models, the doctor and bench commands, air-gapped installs, Docker and Electron, and reading the CLI exit codes.
 ---
 
-# node-slm-operations
+# ggml-node-operations
 
 ## Commands
 
 ```sh
-npx node-slm pull qwen2.5-0.5b          # download and verify (resumes if interrupted)
-npx node-slm list                       # cache state and licenses
-npx node-slm doctor                     # platform, memory, cache, and a backend check
-npx node-slm bench qwen2.5-0.5b --tokens 128
-npx node-slm cache path
+npx ggml-node pull qwen2.5-0.5b          # download and verify (resumes if interrupted)
+npx ggml-node list                       # cache state and licenses
+npx ggml-node doctor                     # platform, memory, cache, and a backend check
+npx ggml-node bench qwen2.5-0.5b --tokens 128
+npx ggml-node cache path
 ```
 
 Exit codes: `0` success, `1` usage error, `2` environment error or a failed `doctor` check.

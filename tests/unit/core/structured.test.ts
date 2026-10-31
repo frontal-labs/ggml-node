@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { isNodeSlmError } from "@/core/errors.js";
-import { createNodeSlmWithDeps, type NodeSlmDeps } from "@/core/node-slm.js";
+import { isGgmlNodeError } from "@/core/errors.js";
+import { createGgmlNodeWithDeps, type GgmlNodeDeps } from "@/core/ggml-node.js";
 import {
   assertSupportedSchema,
   withSchemaInstruction,
@@ -17,7 +17,7 @@ const expectCode = (fn: () => unknown, code: string) => {
   try {
     fn();
   } catch (err) {
-    expect(isNodeSlmError(err) && err.code).toBe(code);
+    expect(isGgmlNodeError(err) && err.code).toBe(code);
     return;
   }
   throw new Error(`expected ${code}`);
@@ -59,8 +59,8 @@ describe("assertSupportedSchema", () => {
       assertSupportedSchema({ properties: { n: { minimum: 1, type: "number" } }, type: "object" });
       throw new Error("expected a throw");
     } catch (err) {
-      expect(isNodeSlmError(err) && err.message).toContain('"minimum"');
-      expect(isNodeSlmError(err) && err.message).toContain("#/properties/n");
+      expect(isGgmlNodeError(err) && err.message).toContain('"minimum"');
+      expect(isGgmlNodeError(err) && err.message).toContain("#/properties/n");
     }
   });
 
@@ -143,7 +143,7 @@ describe("withSchemaInstruction", () => {
 describe("object()", () => {
   let dir: string;
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "node-slm-obj-"));
+    dir = await mkdtemp(join(tmpdir(), "ggml-node-obj-"));
     await writeFile(join(dir, "m.gguf"), Buffer.alloc(100));
   });
   afterEach(async () => {
@@ -152,9 +152,9 @@ describe("object()", () => {
 
   function make(reply: string) {
     const backend = createFakeBackend({ respond: () => reply });
-    const deps: Partial<NodeSlmDeps> = {
+    const deps: Partial<GgmlNodeDeps> = {
       createBackend: () => backend,
-      env: { NODE_SLM_CACHE_DIR: dir },
+      env: { GGML_NODE_CACHE_DIR: dir },
       memory: {
         availableSystemBytes: async () => 1e12,
         cgroupCurrentBytes: async () => undefined,
@@ -166,7 +166,7 @@ describe("object()", () => {
         trainContextSize: 4096,
       }),
     };
-    return { ai: createNodeSlmWithDeps({ model: { path: join(dir, "m.gguf") } }, deps), backend };
+    return { ai: createGgmlNodeWithDeps({ model: { path: join(dir, "m.gguf") } }, deps), backend };
   }
 
   it("returns the parsed object with raw text and the generation metadata", async () => {
@@ -186,7 +186,7 @@ describe("object()", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isNodeSlmError(err) && err.code).toBe("SCHEMA_VIOLATION");
+    expect(isGgmlNodeError(err) && err.code).toBe("SCHEMA_VIOLATION");
   });
 
   it("throws SCHEMA_VIOLATION when the output is not JSON", async () => {
@@ -195,7 +195,7 @@ describe("object()", () => {
       () => undefined,
       (e: unknown) => e,
     );
-    expect(isNodeSlmError(err) && err.code).toBe("SCHEMA_VIOLATION");
+    expect(isGgmlNodeError(err) && err.code).toBe("SCHEMA_VIOLATION");
   });
 
   it("accepts a plain JSON Schema and returns unknown unless a type is given", async () => {
@@ -218,7 +218,7 @@ describe("object()", () => {
         () => undefined,
         (e: unknown) => e,
       );
-    expect(isNodeSlmError(err) && err.code).toBe("INVALID_OPTIONS");
+    expect(isGgmlNodeError(err) && err.code).toBe("INVALID_OPTIONS");
   });
 
   it("rejects a schema argument that is not an object", async () => {
@@ -229,6 +229,6 @@ describe("object()", () => {
         () => undefined,
         (e: unknown) => e,
       );
-    expect(isNodeSlmError(err) && err.code).toBe("INVALID_OPTIONS");
+    expect(isGgmlNodeError(err) && err.code).toBe("INVALID_OPTIONS");
   });
 });

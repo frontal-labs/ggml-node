@@ -1,6 +1,6 @@
 # Express server example
 
-An Express endpoint that serves one shared model. node-slm is a library, not a server: the HTTP layer here is yours.
+An Express endpoint that serves one shared model. ggml-node is a library, not a server: the HTTP layer here is yours.
 
 ## Build and run
 
@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 bun run build
-bun --filter '@node-slm/example-express-server' start
+bun --filter '@ggml-node/example-express-server' start
 ```
 
 Then:

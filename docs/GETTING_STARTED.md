@@ -9,19 +9,19 @@
 ## Install
 
 ```sh
-npm install node-slm
+npm install ggml-node
 ```
 
-`node-slm` has no install script of its own. Its native dependency, `node-llama-cpp`, runs its own `postinstall`, which checks the native binary for your platform. Nothing downloads a model at install time.
+`ggml-node` has no install script of its own. Its native dependency, `node-llama-cpp`, runs its own `postinstall`, which checks the native binary for your platform. Nothing downloads a model at install time.
 
-`zod` is a dependency of `node-slm`. Add it to your own project as well if you write schemas: `npm install zod`.
+`zod` is a dependency of `ggml-node`. Add it to your own project as well if you write schemas: `npm install zod`.
 
 ## Pull a model
 
 The default model is `qwen2.5-0.5b` (Qwen2.5 0.5B Instruct, Q4_K_M, Apache-2.0, 491 MB). Installing the package downloads nothing. Models download on first use, or explicitly:
 
 ```sh
-npx node-slm pull qwen2.5-0.5b
+npx ggml-node pull qwen2.5-0.5b
 ```
 
 The download resumes if interrupted, and the file is verified against its SHA-256 before it is used.
@@ -29,9 +29,9 @@ The download resumes if interrupted, and the file is verified against its SHA-25
 ## Generate
 
 ```ts
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 
 const { text } = await ai.generate({
   prompt: "In one sentence, what is a river?",
@@ -74,9 +74,9 @@ See [structured output](./STRUCTURED_OUTPUT.md) for what the grammar guarantees 
 
 ```ts
 import { generateText } from "ai";
-import { nodeSlm } from "node-slm/ai";
+import { ggmlNode } from "ggml-node/ai";
 
-const { text } = await generateText({ model: nodeSlm("qwen2.5-0.5b"), prompt: "Hello" });
+const { text } = await generateText({ model: ggmlNode("qwen2.5-0.5b"), prompt: "Hello" });
 ```
 
 See [AI SDK provider](./AI_SDK.md).
@@ -84,5 +84,5 @@ See [AI SDK provider](./AI_SDK.md).
 ## Next steps
 
 - Read the [API reference](./API.md) for every option and error code.
-- Try the [examples](../examples): `bun --filter '@node-slm/example-basic' start`.
-- If something fails, run `npx node-slm doctor` first. See [troubleshooting](./TROUBLESHOOTING.md).
+- Try the [examples](../examples): `bun --filter '@ggml-node/example-basic' start`.
+- If something fails, run `npx ggml-node doctor` first. See [troubleshooting](./TROUBLESHOOTING.md).

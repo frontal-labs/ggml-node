@@ -1,9 +1,9 @@
 ---
-name: node-slm-structured-output
-description: Get a typed object from a local node-slm model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
+name: ggml-node-structured-output
+description: Get a typed object from a local ggml-node model with object() and a Zod or JSON Schema. Covers the supported JSON Schema subset, the rejected keywords, and how to validate results.
 ---
 
-# node-slm-structured-output
+# ggml-node-structured-output
 
 `object()` generates JSON under a grammar, so the shape is guaranteed. The values still come from the model, so validate what matters.
 

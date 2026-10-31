@@ -1,6 +1,6 @@
 # Deployment
 
-node-slm runs wherever Node.js 20 or later runs and the native binary loads. Three recipes follow. Test each one on the target before you rely on it.
+ggml-node runs wherever Node.js 20 or later runs and the native binary loads. Three recipes follow. Test each one on the target before you rely on it.
 
 ## Docker
 
@@ -8,14 +8,14 @@ The recipe is in [examples/docker](../examples/docker). It pulls the model in it
 
 ```sh
 bun run build
-bun pm pack                      # writes node-slm-<version>.tgz
-docker build -f examples/docker/Dockerfile -t node-slm-example .
-docker run --rm -p 3000:3000 node-slm-example
+bun pm pack                      # writes ggml-node-<version>.tgz
+docker build -f examples/docker/Dockerfile -t ggml-node-example .
+docker run --rm -p 3000:3000 ggml-node-example
 ```
 
 Notes:
 
-- `NODE_SLM_OFFLINE=1` makes the running container refuse to download. The `model` stage puts the file in the image at build time.
+- `GGML_NODE_OFFLINE=1` makes the running container refuse to download. The `model` stage puts the file in the image at build time.
 - The build needs network access, to download the 491 MB model.
 - The Docker daemon was not running when this example was prepared, so it has not been built in this repository.
 
@@ -39,10 +39,10 @@ The native binaries and the model must sit outside the packed `asar` archive, an
 // main process
 import { app } from "electron";
 import path from "node:path";
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 
 const modelPath = path.join(process.resourcesPath, "models", "qwen2.5-0.5b-instruct-q4_k_m.gguf");
-const ai = createNodeSlm({ model: { path: modelPath }, isolation: "process" });
+const ai = createGgmlNode({ model: { path: modelPath }, isolation: "process" });
 ```
 
 - `isolation: "process"` is recommended in Electron, so a native crash does not take the main process down.
@@ -57,12 +57,12 @@ Zip-based functions (AWS Lambda zip, Vercel functions without a container) are t
 Download on a connected machine, then copy the file into the cache directory:
 
 ```sh
-npx node-slm pull qwen2.5-0.5b --dir ./models   # on a connected machine
+npx ggml-node pull qwen2.5-0.5b --dir ./models   # on a connected machine
 # copy ./models/qwen2.5-0.5b-instruct-q4_k_m.gguf to the target
-NODE_SLM_CACHE_DIR=/srv/models NODE_SLM_OFFLINE=1 node app.js
+GGML_NODE_CACHE_DIR=/srv/models GGML_NODE_OFFLINE=1 node app.js
 ```
 
-Verify the copy with `npx node-slm pull qwen2.5-0.5b --dir /srv/models` on the target. Pull re-checks the SHA-256 and reports a file that does not match.
+Verify the copy with `npx ggml-node pull qwen2.5-0.5b --dir /srv/models` on the target. Pull re-checks the SHA-256 and reports a file that does not match.
 
 ## Operations
 

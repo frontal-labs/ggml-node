@@ -6,6 +6,6 @@ alwaysApply: false
 
 - Unit tests must not touch the network. Use `tests/helpers/fixture-server.ts` for HTTP and `tests/helpers/fake-backend.ts` for inference.
 - Compile-time API checks go in `tests/types/public-api.ts`, and `bun run typecheck` enforces them.
-- Real-model tests are opt-in: put them in `tests/e2e` and gate them with `env.NODE_SLM_E2E`.
+- Real-model tests are opt-in: put them in `tests/e2e` and gate them with `env.GGML_NODE_E2E`.
 - Compare large buffers with `Buffer.compare`, not `toEqual`. Vitest's deep equality is very slow on them.
 - Never assert on timing. Make the failure deterministic instead.

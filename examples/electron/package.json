@@ -1,5 +1,5 @@
 {
-  "name": "@node-slm/example-electron",
+  "name": "@ggml-node/example-electron",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,6 @@
     "start": "electron ."
   },
   "dependencies": {
-    "node-slm": "file:../.."
+    "ggml-node": "file:../.."
   }
 }

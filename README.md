@@ -4,17 +4,17 @@
 
 An AI model SDK inside your Node process. No daemon, no API key, no port.
 
-`node-slm` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
+`ggml-node` runs a small quantized language model in-process with [node-llama-cpp](https://github.com/withcatai/node-llama-cpp). It has a typed API, an [AI SDK](https://ai-sdk.dev) provider, and structured output constrained by a grammar, so the result always matches your schema.
 
 ## What SLM means
 
-SLM stands for **small language model**: a language model with a few hundred million to a few billion parameters, small enough to run on a laptop instead of a data centre. The default model, `qwen2.5-0.5b`, has 0.5 billion parameters and is 491 MB on disk. `node-slm` is Node.js plus SLM: it runs these models inside your own process.
+SLM stands for **small language model**: a language model with a few hundred million to a few billion parameters, small enough to run on a laptop instead of a data centre. The default model, `qwen2.5-0.5b`, has 0.5 billion parameters and is 491 MB on disk. `ggml-node` runs these models inside your own Node.js process, on ggml, the C library behind llama.cpp.
 
 ```ts
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 import { z } from "zod";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 
 const { text } = await ai.generate({ prompt: "In one sentence, what is a river?", maxTokens: 64 });
 
@@ -29,8 +29,8 @@ await ai.unload();
 ## Install
 
 ```sh
-npm install node-slm
-npx node-slm pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
+npm install ggml-node
+npx ggml-node pull qwen2.5-0.5b   # 491 MB, verified by SHA-256
 ```
 
 Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, and a GPU is optional.
@@ -39,17 +39,17 @@ Requires Node.js 20 or later. macOS (Metal), Linux and Windows are supported, an
 
 ```ts
 import { generateText } from "ai";
-import { nodeSlm } from "node-slm/ai";
+import { ggmlNode } from "ggml-node/ai";
 
-const { text } = await generateText({ model: nodeSlm("qwen2.5-0.5b"), prompt: "Hello" });
+const { text } = await generateText({ model: ggmlNode("qwen2.5-0.5b"), prompt: "Hello" });
 ```
 
 ## Test without a model
 
 ```ts
-import { createMockNodeSlm } from "node-slm/testing";
+import { createMockGgmlNode } from "ggml-node/testing";
 
-const ai = createMockNodeSlm({ respond: "a fixed answer" });
+const ai = createMockGgmlNode({ respond: "a fixed answer" });
 ```
 
 ## Models
@@ -60,16 +60,16 @@ const ai = createMockNodeSlm({ respond: "a fixed answer" });
 | `qwen2.5-1.5b` | 1.12 GB | 32768 | Apache-2.0 |
 | `smollm2-360m` | 386 MB | 8192 | Apache-2.0 |
 
-Any other GGUF file works through `createNodeSlm({ model: { path } })`.
+Any other GGUF file works through `createGgmlNode({ model: { path } })`.
 
 ## Command line
 
 ```sh
-npx node-slm list                              # models and cache state
-npx node-slm run "What is a river?"            # generate
-npx node-slm run "Extract: Alex, 34" --json-schema person.json
-npx node-slm bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
-npx node-slm doctor                            # checks the machine and the backend
+npx ggml-node list                              # models and cache state
+npx ggml-node run "What is a river?"            # generate
+npx ggml-node run "Extract: Alex, 34" --json-schema person.json
+npx ggml-node bench qwen2.5-0.5b --tokens 128   # load, first token, tokens/s, memory
+npx ggml-node doctor                            # checks the machine and the backend
 ```
 
 ## Documentation
@@ -83,7 +83,7 @@ npx node-slm doctor                            # checks the machine and the back
 - [Benchmarks](./docs/BENCHMARKS.md) · [Troubleshooting](./docs/TROUBLESHOOTING.md)
 - [Development](./docs/DEVELOPMENT.md)
 
-Examples live in [`examples/`](./examples), and agent skills in [`skills/`](./skills/node-slm).
+Examples live in [`examples/`](./examples), and agent skills in [`skills/`](./skills/ggml-node).
 
 ## When not to use it
 

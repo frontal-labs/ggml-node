@@ -1,4 +1,4 @@
-import { NodeSlmError } from "@/core/errors.js";
+import { GgmlNodeError } from "@/core/errors.js";
 
 export interface SchedulerOptions {
   /** Requests allowed to wait beyond the running ones. Overflow throws `QUEUE_FULL`. */
@@ -65,7 +65,7 @@ export class Scheduler {
 
     if (this.queue.length >= this.maxQueue) {
       return Promise.reject(
-        new NodeSlmError("QUEUE_FULL", `Queue is full (${this.maxQueue} waiting requests)`, {
+        new GgmlNodeError("QUEUE_FULL", `Queue is full (${this.maxQueue} waiting requests)`, {
           hint: "Retry later, or raise maxQueue or maxConcurrency.",
         }),
       );
@@ -125,8 +125,8 @@ export class Scheduler {
   }
 }
 
-export function abortedError(cause?: unknown): NodeSlmError {
-  return new NodeSlmError("ABORTED", "The request was aborted", {
+export function abortedError(cause?: unknown): GgmlNodeError {
+  return new GgmlNodeError("ABORTED", "The request was aborted", {
     cause,
     hint: "The signal fired. Call again if you still need the result.",
   });

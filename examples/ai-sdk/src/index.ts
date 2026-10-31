@@ -1,12 +1,12 @@
 /**
- * NodeSlm with the AI SDK: generateText, streamText and generateObject.
- * Run from the repo root: `bun run build && bun --filter @node-slm/example-ai-sdk start`
+ * GgmlNode with the AI SDK: generateText, streamText and generateObject.
+ * Run from the repo root: `bun run build && bun --filter @ggml-node/example-ai-sdk start`
  */
 import { generateObject, generateText, streamText } from "ai";
-import { nodeSlm } from "node-slm/ai";
+import { ggmlNode } from "ggml-node/ai";
 import { z } from "zod";
 
-const model = nodeSlm("qwen2.5-0.5b");
+const model = ggmlNode("qwen2.5-0.5b");
 
 const text = await generateText({
   maxOutputTokens: 48,

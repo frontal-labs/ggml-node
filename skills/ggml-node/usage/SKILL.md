@@ -1,18 +1,18 @@
 ---
-name: node-slm-usage
-description: Use node-slm to run a small local LLM inside a Node.js process. Covers createNodeSlm, generate, stream, errors, and when a local model is the right choice.
+name: ggml-node-usage
+description: Use ggml-node to run a small local LLM inside a Node.js process. Covers createGgmlNode, generate, stream, errors, and when a local model is the right choice.
 ---
 
-# node-slm-usage
+# ggml-node-usage
 
-node-slm runs a small quantized model in-process. There is no daemon, no API key and no port. Use it for classification, extraction, rewriting and short copy, on the user's machine or in a container. Do not use it for reasoning, facts or long-form writing.
+ggml-node runs a small quantized model in-process. There is no daemon, no API key and no port. Use it for classification, extraction, rewriting and short copy, on the user's machine or in a container. Do not use it for reasoning, facts or long-form writing.
 
 ## Minimal usage
 
 ```ts
-import { createNodeSlm, isNodeSlmError } from "node-slm";
+import { createGgmlNode, isGgmlNodeError } from "ggml-node";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 const { text, finishReason, usage } = await ai.generate({
   prompt: "In one sentence, what is a river?",
   maxTokens: 64,
@@ -24,17 +24,17 @@ await ai.unload();
 ## Rules to follow
 
 - Use a registry id (`qwen2.5-0.5b`, `qwen2.5-1.5b`, `smollm2-360m`). A custom GGUF uses `{ path }`.
-- Models download on first use. If the app must not download at runtime, pull first (`npx node-slm pull qwen2.5-0.5b`) and set `offline: true` or `LOCAL_LLM_OFFLINE=1`.
+- Models download on first use. If the app must not download at runtime, pull first (`npx ggml-node pull qwen2.5-0.5b`) and set `offline: true` or `LOCAL_LLM_OFFLINE=1`.
 - Pass exactly one of `prompt` or `messages`. Put instructions in `system` or a system message.
 - Set `maxTokens` for every call. The default is 256, and a short answer should not pay for more.
 - Set `temperature: 0` for repeatable output. Add `seed` to make sampling repeatable too.
-- Keep one `NodeSlm` per model for the life of the process. Creating one per request reloads the model.
+- Keep one `GgmlNode` per model for the life of the process. Creating one per request reloads the model.
 - Call `ai.unload()` when the process is done with the model, or the memory stays allocated.
 - Respect `maxConcurrency` (default 1) and `maxQueue` (default 64). Handle `QUEUE_FULL` with a retry or a 503.
 
 ## Errors
 
-Every error is an `NodeSlmError` with a `code` and a `hint`. Check with `isNodeSlmError(err)`, then branch on `err.code`:
+Every error is an `GgmlNodeError` with a `code` and a `hint`. Check with `isGgmlNodeError(err)`, then branch on `err.code`:
 
 - `MODEL_NOT_FOUND`: pull the model, or copy it into the cache.
 - `OUT_OF_MEMORY`: use a smaller model, or lower `contextSize` or `maxConcurrency`.

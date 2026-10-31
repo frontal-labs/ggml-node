@@ -1,8 +1,8 @@
-// A minimal HTTP server for the container. It needs the model cached in NODE_SLM_CACHE_DIR.
+// A minimal HTTP server for the container. It needs the model cached in GGML_NODE_CACHE_DIR.
 import { createServer } from "node:http";
-import { createNodeSlm } from "node-slm";
+import { createGgmlNode } from "ggml-node";
 
-const ai = createNodeSlm({ model: "qwen2.5-0.5b" });
+const ai = createGgmlNode({ model: "qwen2.5-0.5b" });
 
 createServer(async (req, res) => {
   if (req.method !== "POST" || req.url !== "/generate") {

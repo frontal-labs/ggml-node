@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { isNodeSlmError, NODE_SLM_ERROR_CODES, NodeSlmError } from "@/index.js";
+import { GGML_NODE_ERROR_CODES, GgmlNodeError, isGgmlNodeError } from "@/index.js";
 
-describe("NodeSlmError", () => {
+describe("GgmlNodeError", () => {
   it("carries code, hint and cause", () => {
     const cause = new Error("disk full");
-    const err = new NodeSlmError("DOWNLOAD_FAILED", "download failed", {
+    const err = new GgmlNodeError("DOWNLOAD_FAILED", "download failed", {
       cause,
-      hint: "Run: npx node-slm pull qwen2.5-0.5b",
+      hint: "Run: npx ggml-node pull qwen2.5-0.5b",
     });
     expect(err).toBeInstanceOf(Error);
-    expect(err.name).toBe("NodeSlmError");
+    expect(err.name).toBe("GgmlNodeError");
     expect(err.code).toBe("DOWNLOAD_FAILED");
-    expect(err.hint).toBe("Run: npx node-slm pull qwen2.5-0.5b");
+    expect(err.hint).toBe("Run: npx ggml-node pull qwen2.5-0.5b");
     expect(err.cause).toBe(cause);
-    expect(isNodeSlmError(err)).toBe(true);
-    expect(isNodeSlmError(new Error("x"))).toBe(false);
+    expect(isGgmlNodeError(err)).toBe(true);
+    expect(isGgmlNodeError(new Error("x"))).toBe(false);
   });
 
   it("enumerates exactly the codes in Section 3.3", () => {
-    expect([...NODE_SLM_ERROR_CODES].sort()).toEqual(
+    expect([...GGML_NODE_ERROR_CODES].sort()).toEqual(
       [
         "MODEL_NOT_FOUND",
         "DOWNLOAD_FAILED",

@@ -1,6 +1,6 @@
 import { expectTypeOf } from "vitest";
 import { z } from "zod";
-import { createNodeSlm, type GenerateResult, type NodeSlm, type ObjectResult } from "@/index.js";
+import { createGgmlNode, type GenerateResult, type GgmlNode, type ObjectResult } from "@/index.js";
 import type { ModelId } from "@/registry/models.js";
 
 /**
@@ -11,13 +11,13 @@ export async function assertPublicTypes(): Promise<void> {
   expectTypeOf<ModelId>().toEqualTypeOf<"qwen2.5-0.5b" | "qwen2.5-1.5b" | "smollm2-360m">();
 
   // @ts-expect-error not a registry model
-  createNodeSlm({ model: "gpt-4o" });
-  createNodeSlm({ model: "qwen2.5-0.5b" });
-  createNodeSlm({ model: { path: "./models/custom.gguf" } });
-  // @ts-expect-error maxTokens is not an NodeSlmOptions field
-  createNodeSlm({ maxTokens: 10, model: "qwen2.5-0.5b" });
+  createGgmlNode({ model: "gpt-4o" });
+  createGgmlNode({ model: "qwen2.5-0.5b" });
+  createGgmlNode({ model: { path: "./models/custom.gguf" } });
+  // @ts-expect-error maxTokens is not an GgmlNodeOptions field
+  createGgmlNode({ maxTokens: 10, model: "qwen2.5-0.5b" });
 
-  const ai = null as unknown as NodeSlm;
+  const ai = null as unknown as GgmlNode;
   expectTypeOf(ai.generate).returns.resolves.toEqualTypeOf<GenerateResult>();
   expectTypeOf(ai.countTokens).returns.resolves.toEqualTypeOf<number>();
   expectTypeOf(ai.unload).returns.resolves.toEqualTypeOf<void>();
@@ -34,5 +34,5 @@ export async function assertPublicTypes(): Promise<void> {
   expectTypeOf(named.object).toEqualTypeOf<{ name: string }>();
 
   // @ts-expect-error exactOptionalPropertyTypes: optional fields reject explicit undefined
-  createNodeSlm({ contextSize: undefined, model: "qwen2.5-0.5b" });
+  createGgmlNode({ contextSize: undefined, model: "qwen2.5-0.5b" });
 }

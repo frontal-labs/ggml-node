@@ -7,3 +7,5 @@ coverage
 # downloaded models are never committed
 *.gguf
 *.partial
+
+.npmrc

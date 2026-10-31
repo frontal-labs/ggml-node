@@ -6,7 +6,7 @@ alwaysApply: false
 
 - Strict TypeScript: `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` are on. Do not widen types to silence errors.
 - No `any` in public types. Use `unknown` and narrow.
-- Every thrown error from the public API is an `NodeSlmError` with a non-empty `hint`.
+- Every thrown error from the public API is an `GgmlNodeError` with a non-empty `hint`.
 - Validate options with the zod schemas in `src/core/schemas.ts`, not ad-hoc checks.
 - Keep the hot path (`runRequest`, scheduler, token counting) free of avoidable allocations and awaits.
 - Use `biome-ignore` only with a reason on the same line or in a file header, and say why.

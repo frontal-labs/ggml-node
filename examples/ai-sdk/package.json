@@ -1,5 +1,5 @@
 {
-  "name": "@node-slm/example-ai-sdk",
+  "name": "@ggml-node/example-ai-sdk",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "ai": "^7.0.157",
-    "node-slm": "file:../..",
+    "ggml-node": "file:../..",
     "zod": "^4.6.7"
   },
   "devDependencies": {

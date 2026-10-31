@@ -1,4 +1,4 @@
-import { NodeSlmError } from "@/core/errors.js";
+import { GgmlNodeError } from "@/core/errors.js";
 import { firstIssue, generateOptionsSchema } from "@/core/schemas.js";
 import type { GenerateOptions, Message } from "@/core/types.js";
 
@@ -146,8 +146,8 @@ function findLastIndex<T>(items: readonly T[], predicate: (item: T) => boolean):
   return -1;
 }
 
-function overflow(tokens: number, budget: number): NodeSlmError {
-  return new NodeSlmError(
+function overflow(tokens: number, budget: number): GgmlNodeError {
+  return new GgmlNodeError(
     "CONTEXT_OVERFLOW",
     `Prompt is ${tokens} tokens, but only ${budget} fit in the context`,
     {
@@ -156,6 +156,6 @@ function overflow(tokens: number, budget: number): NodeSlmError {
   );
 }
 
-function invalid(message: string, hint: string): NodeSlmError {
-  return new NodeSlmError("INVALID_OPTIONS", message, { hint });
+function invalid(message: string, hint: string): GgmlNodeError {
+  return new GgmlNodeError("INVALID_OPTIONS", message, { hint });
 }

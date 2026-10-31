@@ -1,25 +1,25 @@
 import { generateObject, generateText, streamText } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createMockNodeSlm, mockModel } from "@/testing/index.js";
+import { createMockGgmlNode, mockModel } from "@/testing/index.js";
 
-describe("createMockNodeSlm", () => {
+describe("createMockGgmlNode", () => {
   it("echoes the last user message by default", async () => {
-    const ai = createMockNodeSlm();
+    const ai = createMockGgmlNode();
     const r = await ai.generate({ prompt: "hello there" });
     expect(r.text).toBe("echo: hello there");
     expect(r.finishReason).toBe("stop");
   });
 
   it("plays a list of replies in order and cycles", async () => {
-    const ai = createMockNodeSlm({ respond: ["one", "two"] });
+    const ai = createMockGgmlNode({ respond: ["one", "two"] });
     expect((await ai.generate({ prompt: "x" })).text).toBe("one");
     expect((await ai.generate({ prompt: "x" })).text).toBe("two");
     expect((await ai.generate({ prompt: "x" })).text).toBe("one");
   });
 
   it("calls a responder function with the request messages", async () => {
-    const ai = createMockNodeSlm({ respond: ({ messages }) => `${messages.length} messages` });
+    const ai = createMockGgmlNode({ respond: ({ messages }) => `${messages.length} messages` });
     const r = await ai.generate({
       messages: [
         { content: "s", role: "system" },
@@ -30,7 +30,7 @@ describe("createMockNodeSlm", () => {
   });
 
   it("streams in chunks of tokensPerChunk words", async () => {
-    const ai = createMockNodeSlm({ respond: "a b c d e", tokensPerChunk: 2 });
+    const ai = createMockGgmlNode({ respond: "a b c d e", tokensPerChunk: 2 });
     const s = ai.stream({ prompt: "x" });
     const pieces: string[] = [];
     for await (const piece of s.textStream) {
@@ -41,13 +41,13 @@ describe("createMockNodeSlm", () => {
   });
 
   it("object() parses the reply as JSON and checks it with the schema", async () => {
-    const ai = createMockNodeSlm({ respond: '{"label":"spam"}' });
+    const ai = createMockGgmlNode({ respond: '{"label":"spam"}' });
     const r = await ai.object({ prompt: "x", schema: z.object({ label: z.string() }) });
     expect(r.object).toEqual({ label: "spam" });
   });
 
   it("reports the same info shape as the real backend", async () => {
-    const ai = createMockNodeSlm({ respond: "x" });
+    const ai = createMockGgmlNode({ respond: "x" });
     const info = await ai.ready();
     expect(info).toMatchObject({ backend: "llama-cpp", id: "custom", license: "unknown" });
     await ai.unload();

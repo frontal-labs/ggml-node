@@ -1,5 +1,5 @@
 // biome-ignore-all lint/suspicious/useAwait: backend methods return promises for one uniform interface
-// biome-ignore-all lint/style/useErrorCause: NodeSlmError takes its cause inside the options object (see src/core/errors.ts)
+// biome-ignore-all lint/style/useErrorCause: GgmlNodeError takes its cause inside the options object (see src/core/errors.ts)
 import { stat } from "node:fs/promises";
 import type { ChatHistoryItem } from "node-llama-cpp";
 import type {
@@ -11,11 +11,11 @@ import type {
   JsonGrammar,
   ParsedOutput,
 } from "@/backend/types.js";
-import { NodeSlmError } from "@/core/errors.js";
+import { GgmlNodeError } from "@/core/errors.js";
 import type { FinishReason, JsonSchemaObject, Message } from "@/core/types.js";
 
 /**
- * `node-llama-cpp` backend. The package is imported on first use, so importing `node-slm` alone
+ * `node-llama-cpp` backend. The package is imported on first use, so importing `ggml-node` alone
  * never loads the native binary.
  *
  * The chat template comes from the GGUF metadata (`chatWrapper: "auto"`). It is never hand-written.
@@ -48,7 +48,7 @@ export function createLlamaCppBackend(): Backend {
 
   function state(): Loaded {
     if (!loaded) {
-      throw new NodeSlmError("INVALID_OPTIONS", "The backend is not loaded", {
+      throw new GgmlNodeError("INVALID_OPTIONS", "The backend is not loaded", {
         hint: "Call ready() first.",
       });
     }
@@ -58,7 +58,7 @@ export function createLlamaCppBackend(): Backend {
   function sequence(index: number): LlamaContextSequence {
     const seq = state().sequences[index];
     if (!seq) {
-      throw new NodeSlmError("INVALID_OPTIONS", `No sequence ${index}`, {
+      throw new GgmlNodeError("INVALID_OPTIONS", `No sequence ${index}`, {
         hint: "Check maxConcurrency.",
       });
     }
@@ -74,7 +74,7 @@ export function createLlamaCppBackend(): Backend {
   function grammarOf(key: string): NativeGrammar {
     const native = nativeGrammars.get(key);
     if (!native) {
-      throw new NodeSlmError("INVALID_OPTIONS", "The grammar is not loaded in this backend", {
+      throw new GgmlNodeError("INVALID_OPTIONS", "The grammar is not loaded in this backend", {
         hint: "Build the grammar with buildJsonGrammar() after the model is loaded.",
       });
     }
@@ -95,7 +95,7 @@ export function createLlamaCppBackend(): Backend {
           schema as Parameters<Llama["createGrammarForJsonSchema"]>[0],
         );
       } catch (err) {
-        throw new NodeSlmError(
+        throw new GgmlNodeError(
           "INVALID_OPTIONS",
           "The JSON Schema could not be compiled into a grammar",
           {
@@ -176,12 +176,12 @@ export function createLlamaCppBackend(): Backend {
           logLevel: lib.LlamaLogLevel.error,
         });
       } catch (err) {
-        throw new NodeSlmError(
+        throw new GgmlNodeError(
           "UNSUPPORTED_PLATFORM",
           "node-llama-cpp could not start a backend on this machine",
           {
             cause: err,
-            hint: "Run: npx node-slm doctor. Check that the prebuilt binary matches your OS and CPU architecture.",
+            hint: "Run: npx ggml-node doctor. Check that the prebuilt binary matches your OS and CPU architecture.",
           },
         );
       }

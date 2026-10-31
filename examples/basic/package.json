@@ -1,5 +1,5 @@
 {
-  "name": "@node-slm/example-basic",
+  "name": "@ggml-node/example-basic",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "node-slm": "file:../.."
+    "ggml-node": "file:../.."
   }
 }

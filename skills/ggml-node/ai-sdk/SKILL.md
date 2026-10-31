@@ -1,16 +1,16 @@
 ---
-name: node-slm-ai-sdk
-description: Use a local node-slm model through the Vercel AI SDK (generateText, streamText, generateObject) with the node-slm/ai provider. Covers settings, what maps to what, and unsupported inputs.
+name: ggml-node-ai-sdk
+description: Use a local ggml-node model through the Vercel AI SDK (generateText, streamText, generateObject) with the ggml-node/ai provider. Covers settings, what maps to what, and unsupported inputs.
 ---
 
-# node-slm-ai-sdk
+# ggml-node-ai-sdk
 
 ```ts
 import { generateText, streamText, generateObject } from "ai";
-import { nodeSlm } from "node-slm/ai";
+import { ggmlNode } from "ggml-node/ai";
 import { z } from "zod";
 
-const model = nodeSlm("qwen2.5-0.5b");
+const model = ggmlNode("qwen2.5-0.5b");
 
 await generateText({ model, prompt: "Hello", maxOutputTokens: 64, temperature: 0 });
 await generateObject({ model, schema: z.object({ n: z.number() }), prompt: "Pick a number" });
@@ -18,8 +18,8 @@ await generateObject({ model, schema: z.object({ n: z.number() }), prompt: "Pick
 
 ## Rules
 
-- `node-slm(modelId, settings?)` shares one loaded model per model and settings. Do not create a model per request.
-- Settings are the `createNodeSlm` options except `model`. Use `createNodeSlmProvider(settings)` for several models with the same settings.
+- `ggml-node(modelId, settings?)` shares one loaded model per model and settings. Do not create a model per request.
+- Settings are the `createGgmlNode` options except `model`. Use `createGgmlNodeProvider(settings)` for several models with the same settings.
 - Text only in v1. Images and files are dropped with a warning. Tool calling is not supported. `toolChoice: "required"` throws `INVALID_OPTIONS`.
 - `responseFormat: json` with a schema uses the same grammar path as `object()`. Without a schema, the output is not guaranteed, and the provider warns.
 - Structured output streams as one delta, not token by token.

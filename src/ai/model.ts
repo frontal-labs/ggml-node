@@ -10,15 +10,15 @@ import type {
   LanguageModelV4Usage,
   SharedV4Warning,
 } from "@ai-sdk/provider";
-import { NodeSlmError } from "@/core/errors.js";
-import type { GenerateResult, Message, NodeSlm } from "@/core/types.js";
+import { GgmlNodeError } from "@/core/errors.js";
+import type { GenerateResult, GgmlNode, Message } from "@/core/types.js";
 
 /**
  * Internal: the `LanguageModelV4` implementation. `src/ai/index.ts` exposes the public API.
- * Tests build models directly from a fake-backed NodeSlm through `languageModelFor`.
+ * Tests build models directly from a fake-backed GgmlNode through `languageModelFor`.
  */
-export function languageModelFor(modelId: string, llm: NodeSlm): LanguageModelV4 {
-  return new NodeSlmLanguageModel(modelId, llm);
+export function languageModelFor(modelId: string, llm: GgmlNode): LanguageModelV4 {
+  return new GgmlNodeLanguageModel(modelId, llm);
 }
 
 export interface MappedPrompt {
@@ -95,7 +95,7 @@ function toolWarnings(options: LanguageModelV4CallOptions): SharedV4Warning[] {
   }
   const choice = options.toolChoice;
   if (choice && (choice.type === "required" || choice.type === "tool")) {
-    throw new NodeSlmError(
+    throw new GgmlNodeError(
       "INVALID_OPTIONS",
       `toolChoice "${choice.type}" needs tool calling, which v1 does not have`,
       {
@@ -148,7 +148,7 @@ function sharedCall(options: LanguageModelV4CallOptions, messages: Message[]): S
 }
 
 /** Builds the core options object, leaving out undefined fields (exactOptionalPropertyTypes). */
-function toGenerateOptions(call: SharedCall): Parameters<NodeSlm["generate"]>[0] {
+function toGenerateOptions(call: SharedCall): Parameters<GgmlNode["generate"]>[0] {
   return {
     messages: call.messages,
     ...(call.maxTokens === undefined ? {} : { maxTokens: call.maxTokens }),
@@ -204,14 +204,14 @@ function jsonPlan(
   };
 }
 
-class NodeSlmLanguageModel implements LanguageModelV4 {
+class GgmlNodeLanguageModel implements LanguageModelV4 {
   readonly specificationVersion = "v4" as const;
-  readonly provider = "node-slm";
+  readonly provider = "ggml-node";
   readonly modelId: string;
   readonly supportedUrls: Record<string, RegExp[]> = {};
-  private readonly llm: NodeSlm;
+  private readonly llm: GgmlNode;
 
-  constructor(modelId: string, llm: NodeSlm) {
+  constructor(modelId: string, llm: GgmlNode) {
     this.modelId = modelId;
     this.llm = llm;
   }

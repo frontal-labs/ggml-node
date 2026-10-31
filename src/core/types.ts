@@ -1,4 +1,4 @@
-import type { NodeSlmError } from "@/core/errors.js";
+import type { GgmlNodeError } from "@/core/errors.js";
 
 import type { ModelId as RegistryModelId } from "@/registry/models.js";
 
@@ -91,7 +91,7 @@ export interface ModelInfo {
   sizeBytes: number;
 }
 
-export type NodeSlmEvent =
+export type GgmlNodeEvent =
   | { type: "download:start"; model: ModelId; totalBytes: number }
   | { type: "download:progress"; model: ModelId; receivedBytes: number; totalBytes: number }
   | { type: "download:done"; model: ModelId; path: string }
@@ -100,16 +100,16 @@ export type NodeSlmEvent =
   | { type: "request:queued"; id: string; queueLength: number }
   | { type: "request:start"; id: string }
   | { type: "request:done"; id: string; result: Omit<GenerateResult, "text"> }
-  | { type: "request:error"; id: string; error: NodeSlmError };
+  | { type: "request:error"; id: string; error: GgmlNodeError };
 
 export type ModelSource = ModelId | { path: string };
 
-export interface NodeSlmOptions {
+export interface GgmlNodeOptions {
   /** Required for models whose license is not Apache-2.0 or MIT. Default false. */
   acceptLicense?: boolean;
   /** Download lazily when the model is missing and not offline. Default true. */
   autoDownload?: boolean;
-  /** Default: env NODE_SLM_CACHE_DIR, else the OS cache dir + /node-slm. */
+  /** Default: env GGML_NODE_CACHE_DIR, else the OS cache dir + /ggml-node. */
   cacheDir?: string;
   /** Default: min(model.contextLength, 4096). */
   contextSize?: number;
@@ -123,14 +123,14 @@ export interface NodeSlmOptions {
   maxQueue?: number;
   /** A registry model id, or `{ path }` for a custom GGUF file. */
   model: ModelSource;
-  /** Or env NODE_SLM_OFFLINE=1. Default false. */
+  /** Or env GGML_NODE_OFFLINE=1. Default false. */
   offline?: boolean;
-  onEvent?: (event: NodeSlmEvent) => void;
+  onEvent?: (event: GgmlNodeEvent) => void;
   /** Number of threads, or "auto". */
   threads?: number | "auto";
 }
 
-export interface NodeSlm {
+export interface GgmlNode {
   countTokens: (text: string) => Promise<number>;
   generate: (options: GenerateOptions) => Promise<GenerateResult>;
   info: () => ModelInfo | null;
