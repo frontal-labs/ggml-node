@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { win32 } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveCacheDir, resolveOffline } from "@/registry/cache.js";
 
@@ -35,7 +35,7 @@ describe("resolveCacheDir", () => {
   it("uses LOCALAPPDATA on Windows", () => {
     expect(
       resolveCacheDir({ env: { LOCALAPPDATA: "C:\\L" }, home: "C:\\h", platform: "win32" }),
-    ).toBe(join("C:\\L", "ggml-node", "cache"));
+    ).toBe(win32.join("C:\\L", "ggml-node", "cache"));
   });
 });
 

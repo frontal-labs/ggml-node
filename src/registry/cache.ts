@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { posix, win32 } from "node:path";
 import { GgmlNodeError } from "@/core/errors.js";
 import { env as defaultEnv, flagSchema, type GgmlNodeEnv } from "@/env.js";
 
@@ -31,15 +31,17 @@ export function resolveCacheDir(options: ResolveCacheDirOptions = {}): string {
     return env.GGML_NODE_CACHE_DIR;
   }
 
+  // Use the path rules of the platform named in the options, not the host, so a Windows machine
+  // still builds POSIX paths for darwin and linux (and the reverse).
   if (platform === "darwin") {
-    return join(home, "Library", "Caches", "ggml-node");
+    return posix.join(home, "Library", "Caches", "ggml-node");
   }
   if (platform === "win32") {
-    const localAppData = env.LOCALAPPDATA ?? join(home, "AppData", "Local");
-    return join(localAppData, "ggml-node", "cache");
+    const localAppData = env.LOCALAPPDATA ?? win32.join(home, "AppData", "Local");
+    return win32.join(localAppData, "ggml-node", "cache");
   }
   const xdg = env.XDG_CACHE_HOME;
-  return xdg ? join(xdg, "ggml-node") : join(home, ".cache", "ggml-node");
+  return xdg ? posix.join(xdg, "ggml-node") : posix.join(home, ".cache", "ggml-node");
 }
 
 /**
