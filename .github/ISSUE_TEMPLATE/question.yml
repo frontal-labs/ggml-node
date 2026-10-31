@@ -3,15 +3,12 @@ name: Question
 about: Ask a question about tiny-llm
 labels: question
 ---
-
 ## Question
 
 <!-- What do you want to know? -->
-
 ## Context
 
 <!-- Why are you asking? What are you trying to build? -->
-
 ## What you've checked
 
 <!-- Docs, issues, previous answers, `tiny-llm doctor`, etc. -->

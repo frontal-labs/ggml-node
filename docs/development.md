@@ -27,6 +27,17 @@ Bun 1.3.14 is the package manager and script runner (`packageManager` in `packag
 | `bun run registry:generate` | downloads each registry model, verifies it against Hugging Face's LFS hash, and rewrites `src/registry/models.ts` |
 | `bun run ultracite:sync` | writes `biome.json` from `ultracite.json` |
 | `bun run changeset` | records a versioned change for the next release |
+| `bun run prepare` | installs git hooks (husky, lint-staged, commitlint) |
+| `bun run commit` | interactive Conventional Commits prompt |
+
+## Git hooks
+
+Hooks are installed by `bun run prepare` (run once after cloning). They run on every commit:
+
+- **pre-commit** — `lint-staged` formats staged files with Biome and stages the fixes.
+- **commit-msg** — `commitlint` rejects messages that aren't Conventional Commits.
+
+Skip a hook with `git commit --no-verify` only for amending a message or rebasing, never to bypass a check that should pass.
 
 ## Layout
 
@@ -68,7 +79,11 @@ Versioning uses changesets.
 2. When changes reach `main`, `.github/workflows/release.yml` opens a "Version Packages" pull request.
 3. Merging that pull request publishes to npm with provenance. The workflow needs an `NPM_TOKEN` secret.
 
-Nothing is published from a workstation. `.claude/settings.json` asks before any publish command.
+The release workflow splits into two jobs: `version` (bumps versions, opens the PR) and `publish` (runs `verify` again, then publishes). Nothing is published from a workstation.
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the setup, commit-message rules and pull-request checklist.
 
 ## Adding a model
 

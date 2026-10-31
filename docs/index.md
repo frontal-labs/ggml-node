@@ -15,4 +15,5 @@ Run a small LLM inside your Node.js process. No daemon, no API key, no port.
 - [What tiny models are good at](./what-tiny-models-are-good-at.md): honest limits and example prompts
 - [Benchmarks](./benchmarks.md): measured numbers and how they were taken
 - [Development](./development.md): working on tiny-llm itself: scripts, layout, Ultracite, releases
+- [Contributing](../CONTRIBUTING.md): setup, commit rules, pull requests
 - [Troubleshooting](./troubleshooting.md): error codes and their fixes

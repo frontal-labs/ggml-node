@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      node-llama-cpp:
+        patterns:
+          - "node-llama-cpp"
+      inference:
+        patterns:
+          - "@ai-sdk/provider"
+          - "ai"
+      tooling:
+        patterns:
+          - "@biomejs/biome"
+          - "@changesets/cli"
+          - "@commitlint/*"
+          - "husky"
+          - "lint-staged"
+          - "tsup"
+          - "tsx"
+          - "typescript"
+          - "ultracite"
+          - "vitest"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5

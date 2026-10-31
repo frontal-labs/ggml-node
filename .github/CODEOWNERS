@@ -1,0 +1,6 @@
+# These owners will be automatically requested for review.
+*       @frontal-labs/maintainers
+*.ts    @frontal-labs/maintainers
+*.tsx   @frontal-labs/maintainers
+docs/** @frontal-labs/maintainers
+.github/** @frontal-labs/maintainers

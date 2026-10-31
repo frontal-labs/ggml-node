@@ -16,7 +16,8 @@
       "!**/dist",
       "!**/node_modules",
       "!**/coverage",
-      "!**/*.md"
+      "!**/*.md",
+      "!.github"
     ]
   },
   "formatter": {

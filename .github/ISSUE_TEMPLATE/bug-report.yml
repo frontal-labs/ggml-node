@@ -3,11 +3,9 @@ name: Bug report
 about: Something is broken or behaves unexpectedly
 labels: bug
 ---
-
 ## Describe the bug
 
 <!-- What happened, and what did you expect to happen? -->
-
 ## To reproduce
 
 ```sh

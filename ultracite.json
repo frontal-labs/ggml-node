@@ -6,7 +6,13 @@
   "editors": ["vscode", "zed"],
   "frameworks": [],
   "include": ["**/*.ts", "**/*.json", "**/*.js"],
-  "exclude": ["**/dist", "**/node_modules", "**/coverage", "**/*.md"],
+  "exclude": [
+    "**/dist",
+    "**/node_modules",
+    "**/coverage",
+    "**/*.md",
+    ".github"
+  ],
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,
